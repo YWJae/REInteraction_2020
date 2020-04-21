@@ -44,13 +44,16 @@ int main()
 				ac.setMode("HW1-1");
 				break;
 			case '2':
-				ac.setMode("HW1-2");
+				ac.setMode("HW1-2_from_initial_joint_position");
+				//ac.setMode("HW1-2");
 				break;
 			case '3':
-				ac.setMode("HW1-3");
+				ac.setMode("HW1-3_from_initial_joint_position");
+				//ac.setMode("HW1-3");
 				break;
 			case '4':
-				ac.setMode("HW1-4");
+				ac.setMode("HW1-4_from_initial_joint_position");
+				//ac.setMode("HW1-4");
 				break;
 			case 'i':
 				ac.setMode("joint_ctrl_init");

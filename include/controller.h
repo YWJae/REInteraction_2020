@@ -17,9 +17,6 @@ using namespace Eigen;
 class ArmController
 {
     size_t dof_;
-	
-	// Constant Vectors & Matrices (윤원재 추가)
-	
 
 	// Initial state
 	Vector7d q_init_;
@@ -54,7 +51,8 @@ class ArmController
 	Vector3d dx_; // 추가 (윤원재)
 	Vector3d phi_;
 	Vector6d x_dot_; // 6D (linear + angular)
-	Vector6d x_error_; 
+	Vector6d x_error_; // dX (dx, dy, dz, drx, dry, drz)
+	Vector6d x_error_to_target_; // error to the target pose from current pose // 추가 (윤원재)
 
 	// Dynamics
 	Vector7d g_; // Gravity torque
@@ -133,6 +131,7 @@ public:
     void compute();
 	void calcKinematics(Vector7d q, Vector7d qdot);
 	void logData(Eigen::Vector6d x_error);
+	void isMotionCompleted(Eigen::Vector3d, Eigen::Matrix3d rotation_target, double tolerance);
 };
 
 #endif

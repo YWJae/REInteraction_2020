@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <cmath>
 
+#define ERROR_TOLERANCE 0.001 // [m]
+
 using namespace DyrosMath;
 ofstream logfile;
 
@@ -34,6 +36,11 @@ void ArmController::calcKinematics(Vector7d q, Vector7d qdot)
 
 void ArmController::compute()
 {
+	/////* -----		           (pre-defined) Special Joint/Task State (À±¿øÀç)                   ----- */////
+	Vector7d joint_initial_position;	joint_initial_position << 0.0, 0.0, 0.0, -M_PI / 2, 0.0, M_PI / 2, 0.0;
+
+
+
 	/////* -----          ( q_ ) -> Kinematics & Dynamics Calculation -> EEF Pose, Jacobian          ----- */////
 	q_temp_ = q_;
 	qdot_temp_ = qdot_;
@@ -109,9 +116,12 @@ void ArmController::compute()
 	////* -----                       HOMEWORK   2020-26181   À±¿øÀç                      ----- *////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	else if (control_mode_ == "HW1-1") {
-		Vector7d target_position;
-		target_position << 0.0, 0.0, 0.0, -M_PI / 2, 0.0, M_PI / 2, 0.0;
-		moveJointPosition(target_position, 2.0);
+		moveJointPosition(joint_initial_position, 2.0);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("Lock Joints");
+	}
+	else if (control_mode_ == "HW1-2_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, 2.0);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-2");
 	}
 	else if (control_mode_ == "HW1-2")
 	{
@@ -119,7 +129,7 @@ void ArmController::compute()
 		Matrix3d rotation_target; rotation_target << 0, -1, 0,
 													 -1, 0, 0,
 													 0, 0, -1;
-		double settling_time = 1.0;
+		double settling_time = 2.0;
 
 		for (int i = 0; i < 3; i++) {
 			x_cubic_(i) = cubic(play_time_,
@@ -147,7 +157,13 @@ void ArmController::compute()
 		qdot_desired_ = j_inverse_ * x_error_; // (7x1) = (7x6)x(6x1) 
 		q_desired_ = q_ + qdot_desired_;
 
+		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
+
 		logData(x_error_);
+	}
+	else if (control_mode_ == "HW1-3_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, 2.0);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-3");
 	}
 	else if (control_mode_ == "HW1-3")
 	{
@@ -158,7 +174,7 @@ void ArmController::compute()
 
 		//moveTaskPosition(position_target, rotation_target, 1.0);
 
-		double settling_time = 1.0;
+		double settling_time = 2.0;
 
 		for (int i = 0; i < 3; i++) {
 			x_cubic_(i) = cubic(play_time_,
@@ -185,7 +201,13 @@ void ArmController::compute()
 
 		q_desired_ = q_ + j_from_q_desired_inverse_ * x_error_;
 
+		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
+
 		logData(x_error_);
+	}
+	else if (control_mode_ == "HW1-4_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, 2.0);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-4");
 	}
 	else if (control_mode_ == "HW1-4")
 	{
@@ -194,7 +216,7 @@ void ArmController::compute()
 													 -1, 0, 0,
 													 0, 0, -1;
 
-		double settling_time;	settling_time = 1.0;
+		double settling_time = 2.0;
 		
 		Eigen::Vector6d vec6d;
 		Eigen::Vector7d vec7d;	
@@ -246,6 +268,8 @@ void ArmController::compute()
 		
 		q_desired_ = q_ + j_from_q_desired_inverse_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
 		//q_desired_ = q_ + j_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
+
+		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
 		
 		logData(x_error_);
 	}
@@ -258,6 +282,12 @@ void ArmController::compute()
 
 	tick_++;
 	play_time_ = tick_ / hz_;	// second
+}
+
+void ArmController::isMotionCompleted(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance) {
+	x_error_to_target_.block<3, 1>(0, 0) = position_target - x_;
+	x_error_to_target_.block<3, 1>(3, 0) = getPhi(rotation_, rotation_target);
+	if ((x_error_to_target_).norm() < tolerance)	setMode("Lock Joints");
 }
 
 void ArmController::moveTaskPosition(const Vector3d &position_target, const Matrix3d &rotation_target, double settling_time) {
