@@ -40,8 +40,15 @@ int main()
 			switch (key)
 			{
 				// Implement with user input
+			case '`':
+				ac.setMode("test_from_initial_joint_position");
+				break;
+			case '0':
+				ac.setMode("HW1-0");
+				break;
 			case '1':
-				ac.setMode("HW1-1");
+				ac.setMode("HW1-1_from_initial_joint_position");
+				//ac.setMode("HW1-1");
 				break;
 			case '2':
 				ac.setMode("HW1-2_from_initial_joint_position");
@@ -50,10 +57,6 @@ int main()
 			case '3':
 				ac.setMode("HW1-3_from_initial_joint_position");
 				//ac.setMode("HW1-3");
-				break;
-			case '4':
-				ac.setMode("HW1-4_from_initial_joint_position");
-				//ac.setMode("HW1-4");
 				break;
 			case 'i':
 				ac.setMode("joint_ctrl_init");

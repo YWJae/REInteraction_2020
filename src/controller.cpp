@@ -17,6 +17,12 @@ void ArmController::logData(Eigen::Vector6d x_error) {
 			<< x_error(4) << "\t"
 			<< x_error(5) << "\t"
 			<< endl;
+
+	//logfile << play_time_ << "\t";
+	//for (int i = 0; i < x_error.size(); i++) {
+	//	logfile << x_error(i) << "\t";
+	//}
+	//logfile << endl;
 }
 
 	// --------------------------------------------------------------------
@@ -71,8 +77,7 @@ void ArmController::compute()
 	rotation_from_q_desired_ = rotation_from_q_desired_ * body_to_ee_rotation; // To Match RBDL model and CoppeliaSim model
 	CalcPointJacobian6D(*model_, q_desired_, body_id_[DOF - 1], com_position_[DOF - 1], j_temp_from_q_desired_, false);
 	for (int i = 0; i < 2; i++)		j_from_q_desired_.block<3, DOF>(i * 3, 0) = j_temp_from_q_desired_.block<3, DOF>(3 - i * 3, 0);
-	j_from_q_desired_inverse_ = j_from_q_desired_.transpose() * ((j_from_q_desired_ * j_from_q_desired_.transpose()).inverse());
-	
+	j_inverse_from_q_desired_ = j_from_q_desired_.transpose() * ((j_from_q_desired_ * j_from_q_desired_.transpose()).inverse());
 	
 	if (is_mode_changed_)
 	{
@@ -115,20 +120,37 @@ void ArmController::compute()
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	////* -----                       HOMEWORK   2020-26181   윤원재                      ----- *////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
-	else if (control_mode_ == "HW1-1") {
+	else if (control_mode_ == "test_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, 2.0);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("test");
+	}
+	else if (control_mode_ == "test") {
+		Vector3d position_target; position_target << 0.25, 0.28, 0.65;
+		Matrix3d rotation_target; rotation_target << 0, -1, 0,
+													 -1, 0, 0,
+													 0, 0, -1;
+
+		moveTaskPosition(x_, position_target, rotation_, rotation_target, j_inverse_, 5.0);
+		//moveTaskPosition(x_from_q_desired_, position_target, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, 5.0);
+
+		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
+		logData(x_error_);
+	}
+	else if (control_mode_ == "HW1-0") {
 		moveJointPosition(joint_initial_position, 2.0);
 		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("Lock Joints");
 	}
-	else if (control_mode_ == "HW1-2_from_initial_joint_position") {
+	else if (control_mode_ == "HW1-1_from_initial_joint_position") {
 		moveJointPosition(joint_initial_position, 2.0);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-2");
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-1");
 	}
-	else if (control_mode_ == "HW1-2")
+	else if (control_mode_ == "HW1-1")
 	{
 		Vector3d position_target; position_target << 0.25, 0.28, 0.65;
 		Matrix3d rotation_target; rotation_target << 0, -1, 0,
 													 -1, 0, 0,
 													 0, 0, -1;
+/*		
 		double settling_time = 2.0;
 
 		for (int i = 0; i < 3; i++) {
@@ -156,24 +178,65 @@ void ArmController::compute()
 
 		qdot_desired_ = j_inverse_ * x_error_; // (7x1) = (7x6)x(6x1) 
 		q_desired_ = q_ + qdot_desired_;
+*/
+		// 수정전 코드 (20.04.21 19:00)
+		/*
+		moveTaskPosition(x_, position_target, rotation_, rotation_target, j_inverse_, 2.0);
+		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
+		logData(x_error_);
+		*/
+
+		double settling_time = 5.0;
+
+		for (int i = 0; i < 3; i++) { // Translation Dot
+			x_dot_cubic_(i) = cubicDot(play_time_,
+									   control_start_time_,
+									   control_start_time_ + settling_time,
+									   x_init_(i),
+									   position_target(i),
+									   0, 0, hz_);
+			dx_(i) = x_cubic_(i) - x_(i);
+		}
+		rotation_cubic_ = rotationCubic(play_time_,
+										control_start_time_,
+										control_start_time_ + settling_time,
+										rotation_init_,
+										rotation_target);
+		x_dot_cubic_.block<3, 1>(3, 0) = -getPhi(rotation_, rotation_cubic_) * hz_; // Rotation Dot (엄밀히 따지면 trajectory에서의 속도가 아님)
+		phi_ = -getPhi(rotation_, rotation_cubic_);
+
+		for (int i = 0; i < 3; i++) {
+			x_error_(i) = dx_(i);
+			x_error_(i + 3) = phi_(i);
+		}
+
+		q_desired_ = q_ + j_inverse_from_q_desired_ * x_dot_cubic_ / hz_;
 
 		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
-
 		logData(x_error_);
 	}
-	else if (control_mode_ == "HW1-3_from_initial_joint_position") {
+	else if (control_mode_ == "HW1-2_from_initial_joint_position") {
 		moveJointPosition(joint_initial_position, 2.0);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-3");
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-2");
 	}
-	else if (control_mode_ == "HW1-3")
+	else if (control_mode_ == "HW1-2")
 	{
 		Vector3d position_target; position_target << 0.25, 0.28, 0.65;
 		Matrix3d rotation_target; rotation_target << 0, -1, 0,
 													 -1, 0, 0,
 													 0, 0, -1;
 
-		//moveTaskPosition(position_target, rotation_target, 1.0);
+		Vector7d W;			W << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
+		Vector6d Kp;		Kp << 100.0, 100.0, 100.0, 50.0, 50.0, 50.0; // 실험: 10 30 50 70 100 / 100 이상 진동 / t=2s일 때 (200 200 200 100 100 100)
 
+		moveTaskPositionCLIK(x_from_q_desired_, position_target,
+							 rotation_from_q_desired_, rotation_target,
+							 j_inverse_from_q_desired_, W, Kp, 5.0);
+
+		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
+		logData(x_error_);
+
+		/*		
 		double settling_time = 2.0;
 
 		for (int i = 0; i < 3; i++) {
@@ -199,34 +262,16 @@ void ArmController::compute()
 			x_error_(i + 3) = phi_(i);
 		}
 
-		q_desired_ = q_ + j_from_q_desired_inverse_ * x_error_;
+		q_desired_ = q_ + j_inverse_from_q_desired_ * x_error_;
+*/
 
-		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
-
-		logData(x_error_);
-	}
-	else if (control_mode_ == "HW1-4_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-4");
-	}
-	else if (control_mode_ == "HW1-4")
-	{
-		Vector3d position_target; position_target << 0.25, 0.28, 0.65;
-		Matrix3d rotation_target; rotation_target << 0, -1, 0,
-													 -1, 0, 0,
-													 0, 0, -1;
-
-		double settling_time = 2.0;
+		/*
+		double settling_time = 5.0;
 		
-		Eigen::Vector6d vec6d;
-		Eigen::Vector7d vec7d;	
-		//vec7d << 1.0, 1.0, 1.0, 1000.0, 1.0, 1.0, 1.0; // w4 -> 1000.0: 현재 joint 값을 유지하려고 함 -> redundant motion 발생
-		vec7d << 1.0, 1.0, 1.0, 0.01, 1.0, 1.0, 1.0;	 // w4 -> 0.01	: 현재 joint 활용도 up
-		W_ = vec7d.asDiagonal();
-
-		vec6d << 150.0, 150.0, 150.0, 150.0, 150.0, 150.0;
+		Eigen::Vector6d vec6d;		
+		vec6d << 100.0, 100.0, 100.0, 50.0, 50.0, 50.0; // 0 30 50 70 100 / 100 이상 진동 / t=2s일 때 (200 200 200 100 100 100)
 		Kp_ = vec6d.asDiagonal();
-
+		
 		for (int i = 0; i < 3; i++)
 		{
 			x_cubic_(i) = cubic(play_time_,
@@ -236,42 +281,58 @@ void ArmController::compute()
 								position_target(i),
 								0, 0);
 			dx_(i) = x_cubic_(i) - x_from_q_desired_(i);
-
-			x_dot_cubic_(i) = cubicDot(play_time_, 
-									   control_start_time_, 
-									   control_start_time_ + settling_time, 
-									   x_init_(i), 
-									   x_target_(i), 
-									   x_dot_init_(i), 
-									   x_dot_target_(i), 
+		
+			x_dot_cubic_(i) = cubicDot(play_time_,
+									   control_start_time_,
+									   control_start_time_ + settling_time,
+									   x_init_(i),
+									   x_target_(i),
+									   x_dot_init_(i),
+									   x_dot_target_(i),
 									   hz_);
 		}
-
+		
 		rotation_cubic_ = rotationCubic(play_time_,
 										control_start_time_,
 										control_start_time_ + settling_time,
 										rotation_init_,
 										rotation_target);
 		phi_ = -getPhi(rotation_from_q_desired_, rotation_cubic_);
-
-
+		
 		for (int i = 0; i < 3; i++)
 		{
-			x_error_(i)	  = dx_(i);
-			x_error_(i+3) = phi_(i);
-
-			x_dot_cubic_(i + 3) = 0.0; // RotationDot -> ???
+			x_dot_cubic_(i + 3) = phi_(i) * hz_; // Rotation Dot (엄밀히 따지면 trajectory에서의 속도가 아님)
+		
+			x_error_(i) = dx_(i);
+			x_error_(i + 3) = phi_(i);
 		}
 		
-		j_from_q_desired_inverse_ = W_.inverse()*j_from_q_desired_.transpose() * ((j_from_q_desired_ * W_.inverse() * j_from_q_desired_.transpose()).inverse());
-		//j_ = W_.inverse()*j_.transpose() * ((j_ * W_.inverse() * j_.transpose()).inverse());
-		
-		q_desired_ = q_ + j_from_q_desired_inverse_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
-		//q_desired_ = q_ + j_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
+		j_inverse_from_q_desired_ = j_from_q_desired_.transpose() * ((j_from_q_desired_ * j_from_q_desired_.transpose()).inverse());
+		q_desired_ = q_ + j_inverse_from_q_desired_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
+		*/
+
+	}
+	else if (control_mode_ == "HW1-3_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, 2.0);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-3");
+	}
+	else if (control_mode_ == "HW1-3")
+	{
+		Vector3d position_target; position_target << 0.25, 0.28, 0.65;
+		Matrix3d rotation_target; rotation_target << 0, -1, 0,
+													 -1, 0, 0,
+													 0, 0, -1;
+
+		Vector7d W;			W << 1.0, 1.0, 1.0, 0.01, 1.0, 1.0, 1.0;
+		Vector6d Kp;		Kp << 100.0, 100.0, 100.0, 50.0, 50.0, 50.0;
+
+		moveTaskPositionCLIK(x_from_q_desired_, position_target, 
+							 rotation_from_q_desired_, rotation_target, 
+							 j_inverse_from_q_desired_, W, Kp, 5.0);
 
 		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
-		
 		logData(x_error_);
+		//logfile << play_time_ << "\t" << q_(3) << endl;
 	}
 	else
 	{
@@ -290,7 +351,61 @@ void ArmController::isMotionCompleted(Eigen::Vector3d position_target, Eigen::Ma
 	if ((x_error_to_target_).norm() < tolerance)	setMode("Lock Joints");
 }
 
-void ArmController::moveTaskPosition(const Vector3d &position_target, const Matrix3d &rotation_target, double settling_time) {
+void ArmController::moveTaskPositionCLIK(const Vector3d &position_now, const Vector3d &position_target,
+										 const Matrix3d &rotation_now, const Matrix3d &rotation_target,
+										 const Matrix<double, 7, 6> &jacobian_inverse, 
+										 const Vector7d &weight, const Vector6d CLIK_gain, 
+										 double settling_time) {
+	Matrix7d W; 	W  = weight.asDiagonal();
+	Matrix6d Kp;	Kp = CLIK_gain.asDiagonal();
+
+	for (int i = 0; i < 3; i++)
+	{
+		x_cubic_(i) = cubic(play_time_,
+			control_start_time_,
+			control_start_time_ + settling_time,
+			x_init_(i),
+			position_target(i),
+			0, 0);
+		dx_(i) = x_cubic_(i) - x_from_q_desired_(i);
+
+		x_dot_cubic_(i) = cubicDot(play_time_,
+								   control_start_time_,
+								   control_start_time_ + settling_time,
+								   x_init_(i),
+								   x_target_(i),
+								   x_dot_init_(i),
+								   x_dot_target_(i),
+								   hz_);
+	}
+
+	rotation_cubic_ = rotationCubic(play_time_,
+									control_start_time_,
+									control_start_time_ + settling_time,
+									rotation_init_,
+									rotation_target);
+	phi_ = -getPhi(rotation_from_q_desired_, rotation_cubic_);
+
+	for (int i = 0; i < 3; i++)
+	{
+		x_dot_cubic_(i + 3) = phi_(i) * hz_; // Rotation Dot (엄밀히 따지면 trajectory에서의 속도가 아님)
+
+		x_error_(i) = dx_(i);
+		x_error_(i + 3) = phi_(i);
+	}
+
+	j_inverse_from_q_desired_ = W.inverse() * j_from_q_desired_.transpose() * ((j_from_q_desired_ * W.inverse() * j_from_q_desired_.transpose()).inverse());
+	q_desired_ = q_ + j_inverse_from_q_desired_ * (x_dot_cubic_ + Kp * x_error_) / hz_;
+
+	isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
+
+	//logfile << play_time_ << "\t" << q_(3) << endl;
+	logData(x_error_);
+}
+
+void ArmController::moveTaskPosition(const Vector3d &position_now, const Vector3d &position_target, 
+									 const Matrix3d &rotation_now, const Matrix3d &rotation_target, 
+									 const Matrix<double, 7, 6> &jacobian_inverse, double settling_time) {
 	for (int i = 0; i < 3; i++)	{
 		x_cubic_(i) = cubic(play_time_,
 							control_start_time_,
@@ -298,9 +413,7 @@ void ArmController::moveTaskPosition(const Vector3d &position_target, const Matr
 							x_init_(i),
 							position_target(i),
 							0, 0);
-
-		//dx_(i) = x_cubic_(i) - x_(i);
-		dx_(i) = x_cubic_(i) - x_from_q_desired_(i);
+		dx_(i) = x_cubic_(i) - position_now(i);
 	}
 	
 	rotation_cubic_ = rotationCubic(play_time_, 
@@ -308,8 +421,7 @@ void ArmController::moveTaskPosition(const Vector3d &position_target, const Matr
 									control_start_time_ + settling_time, 
 									rotation_init_, 
 									rotation_target);
-	//phi_ = getPhi(rotation_, rotation_cubic_);
-	phi_ = -getPhi(rotation_from_q_desired_, rotation_cubic_);
+	phi_ = -getPhi(rotation_now, rotation_cubic_);
 
 
 	for (int i = 0; i < 3; i++) {
@@ -317,9 +429,7 @@ void ArmController::moveTaskPosition(const Vector3d &position_target, const Matr
 		x_error_(i + 3) = phi_(i);
 	}
 
-	//qdot_desired_ = j_inverse_ * x_error_; // (7x1) = (7x6)x(6x1) 
-	//q_desired_ = q_ + qdot_desired_;
-	q_desired_ = q_ + j_from_q_desired_inverse_ * x_error_;
+	q_desired_ = q_ + jacobian_inverse * x_error_; // dX = (dx, dy, dz, dRx, dRy, dRz) -> error term으로 바로 제어
 }
 
 void ArmController::moveJointPosition(const Vector7d &q_target, double settling_time)

@@ -67,7 +67,7 @@ class ArmController
 	Matrix<double, 6, 7> j_;	// Full basic Jacobian matrix
 	Matrix<double, 6, 7> j_from_q_desired_; // 추가 (ETL)
 	MatrixXd j_temp_from_q_desired_; // 추가 (ETL)
-	Matrix<double, 7, 6> j_from_q_desired_inverse_; // 추가 (ETL)
+	Matrix<double, 7, 6> j_inverse_from_q_desired_; // 추가 (ETL)
 	Matrix<double, 7, 6> j_inverse_;	// Jacobain inverse storage 
 
 	VectorXd q_temp_;	// For RBDL 
@@ -107,7 +107,9 @@ class ArmController
 private:
     void printState();
 	void moveJointPosition(const Vector7d &target_position, double duration);
-	void moveTaskPosition(const Vector3d &position_target, const Matrix3d &rotation_target, double settling_time);
+	void moveTaskPosition(const Vector3d &position_now, const Vector3d &position_target,
+						  const Matrix3d &rotation_now, const Matrix3d &rotation_target,
+						  const Matrix<double, 7, 6> &jacobian_inverse, double settling_time);
 	//void moveJointPositionTorque(const Vector7d &target_position, double duration);
 
 public:
@@ -132,6 +134,11 @@ public:
 	void calcKinematics(Vector7d q, Vector7d qdot);
 	void logData(Eigen::Vector6d x_error);
 	void isMotionCompleted(Eigen::Vector3d, Eigen::Matrix3d rotation_target, double tolerance);
+	void moveTaskPositionCLIK(const Vector3d &position_now, const Vector3d &position_target,
+							  const Matrix3d &rotation_now, const Matrix3d &rotation_target,
+							  const Matrix<double, 7, 6> &jacobian_inverse,
+							  const Vector7d &weight, const Vector6d CLIK_gain,
+							  double settling_time);
 };
 
 #endif
