@@ -78,6 +78,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\rbdl\include;$(SolutionDir)3rdparty\eigen;$(SolutionDir)3rdparty\vrep\remoteAPI;c:\Program Files\V-REP3\V-REP_PRO_EDU\programming\include;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>MAX_EXT_API_CONNECTIONS=255;NON_MATLAB_PARSING;DO_NOT_USE_SHARED_MEMORY;DOF=7;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <AdditionalDependencies>rbdl.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -92,6 +93,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\rbdl\include;$(SolutionDir)3rdparty\eigen;$(SolutionDir)3rdparty\vrep\remoteAPI;c:\Program Files\V-REP3\V-REP_PRO_EDU\programming\include;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>MAX_EXT_API_CONNECTIONS=255;NON_MATLAB_PARSING;DO_NOT_USE_SHARED_MEMORY;DOF=7;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <AdditionalDependencies>rbdl.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -108,6 +110,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\rbdl\include;$(SolutionDir)3rdparty\eigen;$(SolutionDir)3rdparty\vrep\remoteAPI;c:\Program Files\V-REP3\V-REP_PRO_EDU\programming\include;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>MAX_EXT_API_CONNECTIONS=255;NON_MATLAB_PARSING;DO_NOT_USE_SHARED_MEMORY;DOF=7;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -126,6 +129,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\rbdl\include;$(SolutionDir)3rdparty\eigen;$(SolutionDir)3rdparty\vrep\remoteAPI;C:\Program Files\CoppeliaRobotics\CoppeliaSimEdu\programming\include;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>MAX_EXT_API_CONNECTIONS=255;NON_MATLAB_PARSING;DO_NOT_USE_SHARED_MEMORY;DOF=7;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <string>
 #include <conio.h>
@@ -41,7 +42,7 @@ int main()
 			{
 				// Implement with user input
 			case '`':
-				ac.setMode("test_from_initial_joint_position");
+				ac.setMode("Change Parameters");
 				break;
 			case '0':
 				ac.setMode("HW1-0");
@@ -56,6 +57,18 @@ int main()
 				break;
 			case '3':
 				ac.setMode("HW1-3_from_initial_joint_position");
+				//ac.setMode("HW1-3");
+				break;
+			case '4':
+				ac.setMode("HW3-1_from_initial_joint_position");
+				//ac.setMode("HW1-3");
+				break;
+			case '5':
+				ac.setMode("HW3-2_from_initial_joint_position");
+				//ac.setMode("HW1-3");
+				break;
+			case '6':
+				ac.setMode("HW3-3_from_initial_joint_position");
 				//ac.setMode("HW1-3");
 				break;
 			case 'i':
@@ -92,11 +105,11 @@ int main()
 			ac.compute();
 			vb.setDesiredPosition(ac.getDesiredPosition());
 			vb.setDesiredTorque(ac.getDesiredTorque());
-		
+
 			vb.write();
 			vb.simLoop();
 		}
 	}
-		
+
 	return 0;
 }

@@ -522,8 +522,8 @@ c:\users\wonjae yun\yun_ws\panda_control_vrep_template\3rdparty\rbdl\include\rbd
           ]
      C:\Users\WonJae Yun\yun_ws\panda_control_vrep_template\x64\Release\panda_control_vrep.lib 라이브러리 및 C:\Users\WonJae Yun\yun_ws\panda_control_vrep_template\x64\Release\panda_control_vrep.exp 개체를 생성하고 있습니다.
   코드를 생성하고 있습니다.
-  21 of 13652 functions ( 0.2%) were compiled, the rest were copied from previous compilation.
+  2 of 16567 functions (<0.1%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    65 functions had inline decision re-evaluated but remain unchanged
+    119 functions had inline decision re-evaluated but remain unchanged
   코드를 생성했습니다.
   panda_control_vrep.vcxproj -> C:\Users\WonJae Yun\yun_ws\panda_control_vrep_template\x64\Release\panda_control_vrep.exe

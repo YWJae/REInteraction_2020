@@ -1,3 +1,4 @@
+#pragma once
 #ifndef MATH_TYPE_DEFINE_H
 #define MATH_TYPE_DEFINE_H
 
