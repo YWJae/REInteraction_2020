@@ -8,13 +8,17 @@
 
 using namespace std;
 
-
-
 int main()
 {
-	//VRepBridge vb(VRepBridge::CTRL_TORQUE); // Torque controlled
+#ifdef TORQUE_CONTROL_MODE
+	VRepBridge vb(VRepBridge::CTRL_TORQUE); // Torque controlled
+	const double hz = 1000;
+#endif
+#ifndef TORQUE_CONTROL_MODE
 	VRepBridge vb(VRepBridge::CTRL_POSITION); // Position controlled 
 	const double hz = 100;
+#endif
+
 	ArmController ac(hz);
 	bool is_simulation_run = true;
 	bool exit_flag = false;
@@ -44,33 +48,88 @@ int main()
 			case '`':
 				ac.setMode("Change Parameters");
 				break;
+
+#ifdef FINAL_PROJECT
+			case 'c':
+				ac.setMode("center");
+				break;
 			case '0':
-				ac.setMode("HW1-0");
+				ac.setMode("init");
 				break;
 			case '1':
-				ac.setMode("HW1-1_from_initial_joint_position");
-				//ac.setMode("HW1-1");
+				ac.setMode("target1");
 				break;
 			case '2':
-				ac.setMode("HW1-2_from_initial_joint_position");
-				//ac.setMode("HW1-2");
+				ac.setMode("target2");
 				break;
 			case '3':
-				ac.setMode("HW1-3_from_initial_joint_position");
-				//ac.setMode("HW1-3");
+				ac.setMode("target3");
 				break;
 			case '4':
+				ac.setMode("target4");
+				break;
+			case 's':
+				ac.setMode("start");
+				// 1. RRT Planner	("planning")
+				// 2. Robot control ("control")
+				vb.getProjectStartTime();
+				break;
+#endif
+
+#ifdef HW2
+			case '0':
+				ac.setMode("HW2-0");
+				break;
+			case '1':
+				ac.setMode("HW2-1_from_initial_joint_position");
+				//ac.setMode("HW2-1");
+				break;
+			case '2':
+				ac.setMode("HW2-2_from_initial_joint_position");
+				//ac.setMode("HW2-2");
+				break;
+			case '3':
+				ac.setMode("HW2-3_from_initial_joint_position");
+				//ac.setMode("HW2-3");
+				break;
+#endif
+
+#ifdef HW3
+			case '1':
 				ac.setMode("HW3-1_from_initial_joint_position");
-				//ac.setMode("HW1-3");
+				//ac.setMode("HW3-1");
+				break;
+			case '2':
+				ac.setMode("HW3-2_from_initial_joint_position");
+				//ac.setMode("HW3-2");
+				break;
+			case '3':
+				ac.setMode("HW3-3_from_initial_joint_position");
+				//ac.setMode("HW3-3");
+				break;
+#endif
+
+#ifdef HW4
+			case '0':
+				ac.setMode("HW4_init");
+				break;
+			case '1':
+				ac.setMode("HW4-1");
+				break;
+			case '2':
+				ac.setMode("HW4-2(a)");
+				break;
+			case '3':
+				ac.setMode("HW4-2(b)");
+				break;
+			case '4':
+				ac.setMode("HW4-3(a)");
 				break;
 			case '5':
-				ac.setMode("HW3-2_from_initial_joint_position");
-				//ac.setMode("HW1-3");
+				ac.setMode("HW4-3(b)");
+				//ac.setMode("HW4-2(a)");
 				break;
-			case '6':
-				ac.setMode("HW3-3_from_initial_joint_position");
-				//ac.setMode("HW1-3");
-				break;
+#endif
 			case 'i':
 				ac.setMode("joint_ctrl_init");
 				break;
@@ -80,8 +139,6 @@ int main()
 			case 't':
 				ac.setMode("torque_ctrl_dynamic");
 				break;
-
-
 			case '\t':
 				if (is_simulation_run) {
 					cout << "Simulation Pause" << endl;
@@ -108,7 +165,11 @@ int main()
 
 			vb.write();
 			vb.simLoop();
+#ifdef FINAL_PROJECT
+			if (ac.projectFinish())
+				vb.getProjectFinishTime();
 		}
+#endif
 	}
 
 	return 0;

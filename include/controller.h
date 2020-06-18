@@ -2,6 +2,19 @@
 #ifndef CONTROLLER_H_
 #define CONTROLLER_H_
 
+#define FINAL_PROJECT
+
+//#define HW2
+//#define HW3
+//#define HW4
+//#define HW5
+//#define HW6
+//#define HW7
+
+#if defined(HW4) || defined(HW5) || defined(HW6) || defined(HW7)
+#define TORQUE_CONTROL_MODE // Torque Control Mode (원재 추가)
+#endif
+
 #include <iostream>
 #include <Eigen/Dense>
 #include <rbdl/rbdl.h>
@@ -73,6 +86,11 @@ class ArmController
 	Matrix3d Kp_2_;
 	Matrix7d N1_;
 
+	Matrix7d Kp_joint_;
+	Matrix7d Kp_joint_temp_;
+	Matrix7d Kv_joint_;
+	Matrix7d Kv_joint_temp_;
+
 	Vector3d x2_from_q_desired_; // 추가 (ETL)
 	MatrixXd j2_temp_from_q_desired_; // 추가 (ETL)
 	Matrix<double, 6, 7> j2_from_q_desired_; // 추가 (ETL)
@@ -116,6 +134,7 @@ class ArmController
 	VectorXd g_temp_;   // For RBDL 
 
 	Vector7d q_cubic_;
+	Vector7d qdot_cubic_;
 	Vector7d q_target_;
 	Vector7d qdot_desired_; // 추가 (윤원재)
 
@@ -154,8 +173,8 @@ private:
 	void printState();
 	void moveJointPosition(const Vector7d &target_position, double duration);
 	void moveTaskPosition(const Vector3d &position_now, const Vector3d &position_target,
-		const Matrix3d &rotation_now, const Matrix3d &rotation_target,
-		const Matrix<double, 7, 6> &jacobian_inverse, double settling_time);
+						  const Matrix3d &rotation_now, const Matrix3d &rotation_target,
+						  const Matrix<double, 7, 6> &jacobian_inverse, double settling_time);
 	//void moveJointPositionTorque(const Vector7d &target_position, double duration);
 
 public:
@@ -177,14 +196,19 @@ public:
 	void initModel();
 	void initPosition();
 	void compute();
+	bool projectFinish();
+
 	void calcKinematics(Vector7d q, Vector7d qdot);
 	void logData(Eigen::Vector6d x_error);
 	void logData_TaskTransition(Eigen::Vector3d x1, Eigen::Vector3d x2);
+	void logData_JointError(Eigen::Vector7d q_target, Eigen::Vector7d q);
 	void isMotionCompleted(Eigen::Vector3d, Eigen::Matrix3d rotation_target, double tolerance);
+	bool isMotionCompleted2(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance, string state);
 	void moveTaskPositionCLIK(const Vector3d &position_now, const Vector3d &position_target,
 							  const Matrix3d &rotation_now, const Matrix3d &rotation_target,
 							  const Matrix<double, 7, 6> &jacobian_inverse,
 							  double settling_time);
+	void moveJointPositionbyTorque(const Vector7d &q_target, double settling_time);
 };
 
 #endif

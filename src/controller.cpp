@@ -55,6 +55,25 @@ void ArmController::logData_TaskTransition(Eigen::Vector3d x1, Eigen::Vector3d x
 			<< endl;
 }
 
+void ArmController::logData_JointError(Eigen::Vector7d q_target, Eigen::Vector7d q_now) {
+		logfile << play_time_ << "\t"
+				<< (q_target(0) - q_now(0))*RAD2DEG << "\t"
+				<< (q_target(1) - q_now(1))*RAD2DEG << "\t"
+				<< (q_target(2) - q_now(2))*RAD2DEG << "\t"
+				<< (q_target(3) - q_now(3))*RAD2DEG << "\t"
+				<< (q_target(4) - q_now(4))*RAD2DEG << "\t"
+				<< (q_target(5) - q_now(5))*RAD2DEG << "\t"
+				<< (q_target(6) - q_now(6))*RAD2DEG << "\t"
+				//<< q_target(0)*RAD2DEG << "\t" << q_now(0)*RAD2DEG << "\t"
+				//<< q_target(1)*RAD2DEG << "\t" << q_now(1)*RAD2DEG << "\t"
+				//<< q_target(2)*RAD2DEG << "\t" << q_now(2)*RAD2DEG << "\t"
+				//<< q_target(3)*RAD2DEG << "\t" << q_now(3)*RAD2DEG << "\t"
+				//<< q_target(4)*RAD2DEG << "\t" << q_now(4)*RAD2DEG << "\t"
+				//<< q_target(5)*RAD2DEG << "\t" << q_now(5)*RAD2DEG << "\t"
+				//<< q_target(6)*RAD2DEG << "\t" << q_now(6)*RAD2DEG << "\t"
+				<< endl;
+}
+
 // --------------------------------------------------------------------
 // hz_				: int			-> control frequency (= 100 hz)
 // q_				: Vector7d		-> joint position
@@ -72,18 +91,42 @@ void ArmController::calcKinematics(Vector7d q, Vector7d qdot)
 
 void ArmController::compute()
 {
-	/////* -----		           (pre-defined) Special Joint/Task State (윤원재)                   ----- */////
+	/////* -----		           (pre-defined) Special Joint/Task State                     ----- */////
 	//double settling_time = 5.0;
+#ifdef FINAL_PROJECT
+	double dX(0.08), dY(0.18), dZ(0.05);
+	Vector7d joint_initial_position;	joint_initial_position << 0.0, 30.0*DEG2RAD, 0.0, (-120.0)*DEG2RAD, 0.0, (150.0)*DEG2RAD, 0.0;
+	Vector3d center;					center	   << 0.58, 0.0, 0.15;
+	Matrix3d rotation_target;           rotation_target << 1, 0, 0,
+														   0, -1, 0,
+														   0, 0, -1;
 
-	// HW 1
+	Vector3d target_p1;					target_p1 << center[0] + dX, center[1] - dY, center[2];
+	Vector3d target_p2;					target_p2 << center[0] - dX, center[1] + dY, center[2];
+	Vector3d target_p3;					target_p3 << center[0] + dX, center[1] + dY, center[2];
+	Vector3d target_p4;					target_p4 << center[0] - dX, center[1] - dY, center[2];
+
+	Vector3d init_wp1;					init_wp1 << center[0],    center[1],    center[2] + dZ;
+	Vector3d init_wp2;					init_wp2 << target_p1[0], target_p1[1], target_p1[2] + dZ;
+
+
+#endif
+
+
+#ifdef HW2
 	Vector7d joint_initial_position;	joint_initial_position << 0.0, 0.0, 0.0, -M_PI / 2, 0.0, M_PI / 2, 0.0;
 	Vector3d position_target; position_target << 0.25, 0.28, 0.65;
 	Matrix3d rotation_target; rotation_target << 0, -1, 0,
 												 -1, 0, 0,
 												 0, 0, -1;
-	// HW3
+#endif
+
+#ifdef HW3
 	Vector3d x1_target;		x1_target << 0.25, 0.28, 0.65;
 	Vector3d x2_target;		x2_target << 0.0, -0.15, 0.6;
+#endif
+
+
 
 
 
@@ -159,27 +202,35 @@ void ArmController::compute()
 		x_dot_init_ = x_dot_.block<3, 1>(0, 0); // 추가 (윤원재)
 		x_cubic_old_ = x_;
 		rotation_init_ = rotation_;
+
 	}
 
-	if (control_mode_ == "joint_ctrl_home")
+	if      (control_mode_ == "joint_ctrl_home")
 	{
-		Vector7d target_position;
-		target_position << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, M_PI / 4;
-		moveJointPosition(target_position, 3.0);
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, M_PI / 4;
+#ifdef TORQUE_CONTROL_MODE
+		moveJointPositionbyTorque(q_target, settling_time_);
+#endif
+#ifndef TORQUE_CONTROL_MODE
+		moveJointPosition(q_target, settling_time_);
+#endif
+		
 	}
 	else if (control_mode_ == "joint_ctrl_init")
 	{
-		Vector7d target_position;
-		target_position << 0.0, 0.0, 0.0, -M_PI / 2., 0.0, 0.0, M_PI / 4;
-		moveJointPosition(target_position, 3.0);
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -M_PI / 2., 0.0, 0.0, M_PI / 4;
+#ifdef TORQUE_CONTROL_MODE
+		moveJointPositionbyTorque(q_target, settling_time_);
+#endif
+#ifndef TORQUE_CONTROL_MODE
+		moveJointPosition(q_target, settling_time_);
+#endif
 	}
 	else if (control_mode_ == "torque_ctrl_dynamic")
 	{
-		Vector7d target_position;
-		target_position << 0.0, 0.0, 0.0, -M_PI / 2., 0.0, 0.0, M_PI / 4;
-		//moveJointPositionTorque(target_position, 5.0);
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -M_PI / 2., 0.0, 0.0, M_PI / 4;
+		moveJointPositionbyTorque(q_target, settling_time_);
 	}
-
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	////* -----                       HOMEWORK   2020-26181   윤원재                      ----- *////
@@ -193,6 +244,8 @@ void ArmController::compute()
 			cout << "1. Settling Time (t)" << endl;
 			cout << "2. Control Gain (Kp)" << endl;
 			cout << "3. Weight Matrix (W)" << endl;
+			cout << "4. Torque Control P-Gain (Kp_joint)" << endl;
+			cout << "5. Torque Control D-Gain (Kv_joint)" << endl;
 			cout << "Enter number to change parameters: ";
 			if (!(cin >> n))	throw 0;
 			cout << "=======================================" << endl;
@@ -223,6 +276,39 @@ void ArmController::compute()
 				W_ = W_vector.asDiagonal();
 				cout << "Success: Parameters have been changed: " << "W = " << endl << W_ << endl;
 			}
+			// 4. Kp_joint_
+			else if (n == 4) {
+				
+				double Kp;
+				cout << "Enter Kp_joint: ";
+				if (!(cin >> Kp))	throw 2;
+				Kp_joint_ = Kp * EYE(7);
+
+				//Vector7d Kp_joint_vector;	Kp_joint_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+				//for (int i = 0; i < DOF; i++) {
+				//	cout << "Enter Kp_joint(" << i << "): ";
+				//	if (!(cin >> Kp_joint_vector(i)))	throw 2;
+				//}
+				//Kp_joint_ = Kp_joint_vector.asDiagonal();
+				
+				cout << "Success: Parameters have been changed: " << "Kp_joint = " << endl << Kp_joint_ << endl;
+			}
+			// 5. Kv_joint_
+			else if (n == 5) {
+				
+				double Kv;
+				cout << "Enter Kv_joint: ";
+				if (!(cin >> Kv))	throw 2;
+				Kv_joint_ = Kv * EYE(7);
+				//Vector7d Kv_joint_vector;	Kv_joint_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+				//for (int i = 0; i < DOF; i++) {
+				//	cout << "Enter Kv_joint(" << i << "): ";
+				//	if (!(cin >> Kv_joint_vector(i)))	throw 2;
+				//}
+				//Kv_joint_ = Kv_joint_vector.asDiagonal();
+				
+				cout << "Success: Parameters have been changed: " << "Kv_joint = " << endl << Kv_joint_ << endl;
+			}
 			cout << "=======================================" << endl;
 		}
 		catch (int e) {
@@ -234,16 +320,71 @@ void ArmController::compute()
 		}
 		setMode("Lock Joints");
 	}
+	
+#ifdef FINAL_PROJECT
+	else if (control_mode_ == "center") {
+		moveJointPosition(joint_initial_position, settling_time_);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("Lock Joints");
+	}
+	else if (control_mode_ == "init") {
+		setMode("init_1");
+	}
+	else if (control_mode_ == "init_1") {
+		init_wp1 << x_init_[0], x_init_[1], x_init_[2] + dZ;
+		moveTaskPositionCLIK(x_from_q_desired_, init_wp1,
+							 rotation_from_q_desired_, rotation_target,
+							 j_inverse_from_q_desired_, settling_time_);
 
-	/* --- HW1-0. Joint Space Control --- */
-	else if (control_mode_ == "HW1-0") {
-		moveJointPosition(joint_initial_position, 2.0);
+		isMotionCompleted2(init_wp1, rotation_target, ERROR_TOLERANCE, "init_2");
+	}
+	else if (control_mode_ == "init_2") {
+		moveTaskPositionCLIK(x_from_q_desired_, init_wp2,
+							 rotation_from_q_desired_, rotation_target,
+							 j_inverse_from_q_desired_, settling_time_);
+
+		isMotionCompleted2(init_wp2, rotation_target, ERROR_TOLERANCE, "init_3");
+	}
+	else if (control_mode_ == "init_3") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p1,
+							 rotation_from_q_desired_, rotation_target,
+							 j_inverse_from_q_desired_, settling_time_);
+
+		isMotionCompleted2(target_p1, rotation_target, ERROR_TOLERANCE, "Lock Joint");
+	}
+
+	
+	else if (control_mode_ == "target1") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p1,
+							 rotation_from_q_desired_, rotation_target,
+							 j_inverse_from_q_desired_, settling_time_);
+	}
+	else if (control_mode_ == "target2") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p2,
+							 rotation_from_q_desired_, rotation_target,
+							 j_inverse_from_q_desired_, settling_time_);
+	}
+	else if (control_mode_ == "target3") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p3,
+			rotation_from_q_desired_, rotation_target,
+			j_inverse_from_q_desired_, settling_time_);
+	}
+	else if (control_mode_ == "target4") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p4,
+			rotation_from_q_desired_, rotation_target,
+			j_inverse_from_q_desired_, settling_time_);
+	}
+#endif
+
+#ifdef HW2 //HW2
+	// --- HW2-0. Joint Space Control --- //
+	else if (control_mode_ == "HW2-0") {
+		moveJointPosition(joint_initial_position, settling_time_);
 		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("Lock Joints");
 	}
 
-	/* --- HW1-1(a). q_desired = q + dq  (dq = J_inverse * x_dot * dt , x_dot -> from trajectory) --- */
+	// --- HW2-1(a). q_desired = q + dq  (dq = J_inverse * x_dot * dt , x_dot -> from trajectory) --- //
 	else if (control_mode_ == "test_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
+		moveJointPosition(joint_initial_position, settling_time_);
 		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("test");
 	}
 	else if (control_mode_ == "test") {
@@ -273,12 +414,12 @@ void ArmController::compute()
 		logData(x_error_);
 	}
 
-	/* --- HW1-1(b). q_desired = q + dq  (dq = J_inverse * dx) --- */
-	else if (control_mode_ == "HW1-1_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-1");
+	// --- HW2-1(b). q_desired = q + dq  (dq = J_inverse * dx) --- //
+	else if (control_mode_ == "HW2-1_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, settling_time_);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW2-1");
 	}
-	else if (control_mode_ == "HW1-1")
+	else if (control_mode_ == "HW2-1")
 	{
 		moveTaskPosition(x_, position_target, rotation_, rotation_target, j_inverse_, settling_time_); // j_ 사용
 
@@ -286,112 +427,28 @@ void ArmController::compute()
 		logData(x_error_);
 	}
 
-	/* --- HW1-2. CLIK, without Weight Matrix ( W=diag(1, 1, 1, 1, 1, 1, 1) ) --- */
-	else if (control_mode_ == "HW1-2_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-2");
+	// --- HW2-2. CLIK, without Weight Matrix ( W=diag(1, 1, 1, 1, 1, 1, 1) ) --- //
+	else if (control_mode_ == "HW2-2_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, settling_time_);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW2-2");
 	}
-	else if (control_mode_ == "HW1-2")
+	else if (control_mode_ == "HW2-2")
 	{
-		//Vector7d W;			W << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-		//W_ = W.asDiagonal();
-		//Vector6d Kp;		Kp << 100.0, 100.0, 100.0, 50.0, 50.0, 50.0; // 실험: 10 30 50 70 100 / 100 이상 진동 / t=2s일 때 (200 200 200 100 100 100)
-
 		moveTaskPositionCLIK(x_from_q_desired_, position_target,
 							 rotation_from_q_desired_, rotation_target,
 							 j_inverse_from_q_desired_, settling_time_);
 
 		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
 		logData(x_error_);
-
-		/*
-		double settling_time = 2.0;
-
-		for (int i = 0; i < 3; i++) {
-		x_cubic_(i) = cubic(play_time_,
-		control_start_time_,
-		control_start_time_ + settling_time,
-		x_init_(i),
-		position_target(i),
-		0, 0);
-		dx_(i) = x_cubic_(i) - x_from_q_desired_(i);
-		}
-
-		rotation_cubic_ = rotationCubic(play_time_,
-		control_start_time_,
-		control_start_time_ + settling_time,
-		rotation_init_,
-		rotation_target);
-		phi_ = -getPhi(rotation_from_q_desired_, rotation_cubic_);
-
-
-		for (int i = 0; i < 3; i++) {
-		x_error_(i) = dx_(i);
-		x_error_(i + 3) = phi_(i);
-		}
-
-		q_desired_ = q_ + j_inverse_from_q_desired_ * x_error_;
-		*/
-
-		/*
-		double settling_time = 5.0;
-
-		Eigen::Vector6d vec6d;
-		vec6d << 100.0, 100.0, 100.0, 50.0, 50.0, 50.0; // 0 30 50 70 100 / 100 이상 진동 / t=2s일 때 (200 200 200 100 100 100)
-		Kp_ = vec6d.asDiagonal();
-
-		for (int i = 0; i < 3; i++)
-		{
-		x_cubic_(i) = cubic(play_time_,
-		control_start_time_,
-		control_start_time_ + settling_time,
-		x_init_(i),
-		position_target(i),
-		0, 0);
-		dx_(i) = x_cubic_(i) - x_from_q_desired_(i);
-
-		x_dot_cubic_(i) = cubicDot(play_time_,
-		control_start_time_,
-		control_start_time_ + settling_time,
-		x_init_(i),
-		x_target_(i),
-		x_dot_init_(i),
-		x_dot_target_(i),
-		hz_);
-		}
-
-		rotation_cubic_ = rotationCubic(play_time_,
-		control_start_time_,
-		control_start_time_ + settling_time,
-		rotation_init_,
-		rotation_target);
-		phi_ = -getPhi(rotation_from_q_desired_, rotation_cubic_);
-
-		for (int i = 0; i < 3; i++)
-		{
-		x_dot_cubic_(i + 3) = phi_(i) * hz_; // Rotation Dot (엄밀히 따지면 trajectory에서의 속도가 아님)
-
-		x_error_(i) = dx_(i);
-		x_error_(i + 3) = phi_(i);
-		}
-
-		j_inverse_from_q_desired_ = j_from_q_desired_.transpose() * ((j_from_q_desired_ * j_from_q_desired_.transpose()).inverse());
-		q_desired_ = q_ + j_inverse_from_q_desired_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
-		*/
 	}
 
-	/* --- HW1-3. CLIK with Weight Matrix ( W=diag(1, 1, 1, 0.01, 1, 1, 1) ) --- */
-	else if (control_mode_ == "HW1-3_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW1-3");
+	// --- HW2-3. CLIK with Weight Matrix ( W=diag(1, 1, 1, 0.01, 1, 1, 1) ) --- //
+	else if (control_mode_ == "HW2-3_from_initial_joint_position") {
+		moveJointPosition(joint_initial_position, settling_time_);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW2-3");
 	}
-	else if (control_mode_ == "HW1-3")
+	else if (control_mode_ == "HW2-3")
 	{
-		//Vector7d W;			W << 1.0, 1.0, 1.0, 0.01, 1.0, 1.0, 1.0;
-		//W_ = W.asDiagonal();
-		//Vector6d Kp;		Kp << 100.0, 100.0, 100.0, 50.0, 50.0, 50.0;
-		
-
 		moveTaskPositionCLIK(x_from_q_desired_, position_target,
 							 rotation_from_q_desired_, rotation_target,
 							 j_inverse_from_q_desired_, settling_time_);
@@ -400,116 +457,243 @@ void ArmController::compute()
 		logData(x_error_);
 		//logfile << play_time_ << "\t" << q_(3) << endl;
 	}
+#endif
 
-	/* --- HW3-1. Multi task: Simultaneously --- */
+#ifdef HW3 //HW3
+	// --- HW3-1. Multi task: Simultaneously --- //
 	else if (control_mode_ == "HW3-1_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW3-1");
+	moveJointPosition(joint_initial_position, settling_time_);
+	if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW3-1");
 	}
-	else if (control_mode_ == "HW3-1")
-	{
-		j1_v_ = j1_.block<3, 7>(0, 0);
-		j2_v_ = j2_.block<3, 7>(0, 0);
+	else if (control_mode_ == "HW3-1"){
+	j1_v_ = j1_.block<3, 7>(0, 0);
+	j2_v_ = j2_.block<3, 7>(0, 0);
 
-		j_tot_transpose_ << j1_v_.transpose(), j2_v_.transpose();
-		j_tot_ = j_tot_transpose_.transpose();
-		j_tot_inverse_ = j_tot_.transpose()*(j_tot_*j_tot_.transpose() + 0.01*EYE(6)).inverse();
+	j_tot_transpose_ << j1_v_.transpose(), j2_v_.transpose();
+	j_tot_ = j_tot_transpose_.transpose();
+	j_tot_inverse_ = j_tot_.transpose()*(j_tot_*j_tot_.transpose() + 0.01*EYE(6)).inverse();
 
-		for (int i = 0; i < 3; i++)
-		{
-			x1_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0);
-			x1_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0, hz_);
-			x2_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0);
-			x2_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0, hz_);
-		}
-		x_cubic_tot_ << x1_cubic_, x2_cubic_;
-		x_tot_ << x1_, x2_;
-		x_cubic_dot_tot_ << x1_dot_cubic_.block<3, 1>(0, 0), x2_dot_cubic_.block<3, 1>(0, 0);
-		x_dot_tot_ << x_dot_.block<3, 1>(0, 0), x2_dot_.block <3, 1>(0, 0);
+	for (int i = 0; i < 3; i++){
+		x1_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0);
+		x1_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0, hz_);
+		x2_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0);
+		x2_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0, hz_);
+	}
+	x_cubic_tot_ << x1_cubic_, x2_cubic_;
+	x_tot_ << x1_, x2_;
+	x_cubic_dot_tot_ << x1_dot_cubic_.block<3, 1>(0, 0), x2_dot_cubic_.block<3, 1>(0, 0);
+	x_dot_tot_ << x_dot_.block<3, 1>(0, 0), x2_dot_.block <3, 1>(0, 0);
 
-		qdot_desired_ = j_tot_inverse_ * (x_cubic_dot_tot_ + Kp_ * (x_cubic_tot_ - x_tot_));
-		q_desired_ = q_ + qdot_desired_ / hz_;
+	qdot_desired_ = j_tot_inverse_ * (x_cubic_dot_tot_ + Kp_ * (x_cubic_tot_ - x_tot_));
+	q_desired_ = q_ + qdot_desired_ / hz_;
 
-		isMotionCompleted(x1_target, rotation_, ERROR_TOLERANCE);
-		logData_TaskTransition(x1_, x2_);
+	isMotionCompleted(x1_target, rotation_, ERROR_TOLERANCE);
+	logData_TaskTransition(x1_, x2_);
 	}
 
-	/* --- HW3-2. Multi task: task2 in Nullspace of task1 --- */
+	// --- HW3-2. Multi task: task2 in Nullspace of task1 --- //
 	else if (control_mode_ == "HW3-2_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
+		moveJointPosition(joint_initial_position, settling_time_);
 		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW3-2");
 	}
-	else if (control_mode_ == "HW3-2")
-	{
-		j1_v_ = j1_.block<3, 7>(0, 0);
-		j2_v_ = j2_.block<3, 7>(0, 0);
+	else if (control_mode_ == "HW3-2"){
+	j1_v_ = j1_.block<3, 7>(0, 0);
+	j2_v_ = j2_.block<3, 7>(0, 0);
 
-		j1_v_inverse_ = j1_v_.transpose() * ((j1_v_ * j1_v_.transpose()).inverse());
-		j2_v_inverse_ = j2_v_.transpose() * ((j2_v_ * j2_v_.transpose()).inverse());
+	j1_v_inverse_ = j1_v_.transpose() * ((j1_v_ * j1_v_.transpose()).inverse());
+	j2_v_inverse_ = j2_v_.transpose() * ((j2_v_ * j2_v_.transpose()).inverse());
 
-		N1_ = (EYE(7) - j1_v_inverse_ * j1_v_);
+	N1_ = (EYE(7) - j1_v_inverse_ * j1_v_);
 
-		for (int i = 0; i < 3; i++)
-		{
-			x1_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0);
-			x1_dot_cubic_(i) = cubicDot (play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0, hz_);
-			x2_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0);
-			x2_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0, hz_);
-		}
-
-		x1_dot_CLIK_ = x1_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(0, 0) * (x1_cubic_ - x1_);
-		x2_dot_CLIK_ = x2_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(3, 3) * (x2_cubic_ - x2_);
-	
-		Vector7d q2dot_desired;		q2dot_desired = j2_v_inverse_ * (x2_dot_CLIK_ - j2_v_ * j1_v_inverse_  * x1_dot_CLIK_);
-	
-		qdot_desired_ = j1_v_inverse_ * x1_dot_CLIK_  +  N1_ * q2dot_desired;
-		q_desired_ = q_ + qdot_desired_ / hz_;
-		//q_desired_ = q_ + (j1_v_inverse_ * x1_dot_CLIK_ + N1_ * (j2_v_inverse_ * (x2_dot_CLIK_ - j2_v_ * j1_v_inverse_  * x1_dot_CLIK_))) / hz_;
-
-		isMotionCompleted(x1_target, rotation_, ERROR_TOLERANCE);
-		logData_TaskTransition(x1_, x2_);
+	for (int i = 0; i < 3; i++){
+		x1_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0);
+		x1_dot_cubic_(i) = cubicDot (play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0, hz_);
+		x2_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0);
+		x2_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0, hz_);
 	}
 
-	/* --- HW3-3. Multi task: Task Transition  --- */
+	x1_dot_CLIK_ = x1_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(0, 0) * (x1_cubic_ - x1_);
+	x2_dot_CLIK_ = x2_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(3, 3) * (x2_cubic_ - x2_);
+
+	Vector7d q2dot_desired;		q2dot_desired = j2_v_inverse_ * (x2_dot_CLIK_ - j2_v_ * j1_v_inverse_  * x1_dot_CLIK_);
+
+	qdot_desired_ = j1_v_inverse_ * x1_dot_CLIK_  +  N1_ * q2dot_desired;
+	q_desired_ = q_ + qdot_desired_ / hz_;
+	//q_desired_ = q_ + (j1_v_inverse_ * x1_dot_CLIK_ + N1_ * (j2_v_inverse_ * (x2_dot_CLIK_ - j2_v_ * j1_v_inverse_  * x1_dot_CLIK_))) / hz_;
+
+	isMotionCompleted(x1_target, rotation_, ERROR_TOLERANCE);
+	logData_TaskTransition(x1_, x2_);
+	}
+
+	// --- HW3-3. Multi task: Task Transition  --- //
 	else if (control_mode_ == "HW3-3_from_initial_joint_position") {
-		moveJointPosition(joint_initial_position, 2.0);
+		moveJointPosition(joint_initial_position, settling_time_);
 		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("HW3-3");
 	}
-	else if (control_mode_ == "HW3-3")
+	else if (control_mode_ == "HW3-3"){
+	j1_v_ = j1_.block<3, 7>(0, 0);
+	j2_v_ = j2_.block<3, 7>(0, 0);
+
+	j1_v_inverse_ = j1_v_.transpose() * ((j1_v_ * j1_v_.transpose()).inverse());
+	j2_v_inverse_ = j2_v_.transpose() * ((j2_v_ * j2_v_.transpose()).inverse());
+
+	N1_ = (EYE(7) - j1_v_inverse_ * j1_v_);
+
+	for (int i = 0; i < 3; i++)
 	{
-		j1_v_ = j1_.block<3, 7>(0, 0);
-		j2_v_ = j2_.block<3, 7>(0, 0);
-
-		j1_v_inverse_ = j1_v_.transpose() * ((j1_v_ * j1_v_.transpose()).inverse());
-		j2_v_inverse_ = j2_v_.transpose() * ((j2_v_ * j2_v_.transpose()).inverse());
-
-		N1_ = (EYE(7) - j1_v_inverse_ * j1_v_);
-
-		for (int i = 0; i < 3; i++)
-		{
-			x1_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0);
-			x1_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0, hz_);
-			x2_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0);
-			x2_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0, hz_);
-		}
-
-		h1_ = 1.0;
-		h2_ = (play_time_ - control_start_time_) / settling_time_;
-		//h2_ = cubic(play_time_, control_start_time_, control_start_time_ + settling_time, 0.0, 1.0, 0.0, 0.0);
-		//h2_ = 0.0;
-		
-		x1_dot_CLIK_ = x1_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(0, 0) * (x1_cubic_ - x1_);
-		x2_dot_CLIK_ = x2_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(3, 3) * (x2_cubic_ - x2_);
-
-		x1_dot_input_ = h1_ * x1_dot_CLIK_ + (1 - h1_)*j1_v_*j2_v_inverse_*h2_*x2_dot_CLIK_;
-		x2_dot_input_ = h2_ * x2_dot_CLIK_ + (1 - h2_)*j2_v_*j1_v_inverse_*h1_*x1_dot_CLIK_;
-
-		qdot_desired_ = j1_v_inverse_ * x1_dot_input_ + N1_ * j2_v_inverse_ * (x2_dot_input_ - j2_v_*j1_v_inverse_*x1_dot_input_);
-		q_desired_ = q_ + qdot_desired_ / hz_;
-
-		isMotionCompleted(x1_target, rotation_, ERROR_TOLERANCE);
-		logData_TaskTransition(x1_, x2_);
+		x1_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0);
+		x1_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x1_init_(i), x1_target(i), 0.0, 0.0, hz_);
+		x2_cubic_(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0);
+		x2_dot_cubic_(i) = cubicDot	(play_time_, control_start_time_, control_start_time_ + settling_time_, x2_init_(i), x2_target(i), 0.0, 0.0, hz_);
 	}
+
+	h1_ = 1.0;
+	h2_ = (play_time_ - control_start_time_) / settling_time_;
+	//h2_ = cubic(play_time_, control_start_time_, control_start_time_ + settling_time, 0.0, 1.0, 0.0, 0.0);
+	//h2_ = 0.0;
+
+	x1_dot_CLIK_ = x1_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(0, 0) * (x1_cubic_ - x1_);
+	x2_dot_CLIK_ = x2_dot_cubic_.block<3, 1>(0, 0) + Kp_.block<3, 3>(3, 3) * (x2_cubic_ - x2_);
+
+	x1_dot_input_ = h1_ * x1_dot_CLIK_ + (1 - h1_)*j1_v_*j2_v_inverse_*h2_*x2_dot_CLIK_;
+	x2_dot_input_ = h2_ * x2_dot_CLIK_ + (1 - h2_)*j2_v_*j1_v_inverse_*h1_*x1_dot_CLIK_;
+
+	qdot_desired_ = j1_v_inverse_ * x1_dot_input_ + N1_ * j2_v_inverse_ * (x2_dot_input_ - j2_v_*j1_v_inverse_*x1_dot_input_);
+	q_desired_ = q_ + qdot_desired_ / hz_;
+
+	isMotionCompleted(x1_target, rotation_, ERROR_TOLERANCE);
+	logData_TaskTransition(x1_, x2_);
+	}
+#endif
+
+#ifdef HW4 //HW4
+	else if (control_mode_ == "HW4_init") {
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -30.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		double settling_time;	settling_time = 0.5;
+
+		Matrix7d Kp_joint;		Kp_joint = 400.0 * EYE(7);
+		Matrix7d Kv_joint;		Kv_joint =  40.0 * EYE(7);
+
+		for (int i = 0; i < DOF; i++){
+			q_cubic_(i) = cubic(play_time_, control_start_time_, control_start_time_ + settling_time, q_init_(i), q_target(i), qdot_init_(i), qdot_target_(i));
+			qdot_cubic_(i) = cubicDot(play_time_, control_start_time_, control_start_time_ + settling_time, q_init_(i), q_target(i), qdot_init_(i), qdot_target_(i), hz_);
+		}
+		torque_desired_ = m_ * (Kp_joint*(q_cubic_ - q_) + Kv_joint * (qdot_cubic_ - qdot_)) + g_;
+
+		if ((q_target - q_).norm()*RAD2DEG < 1.0)	setMode("Lock Joints");
+	}
+
+	else if (control_mode_ == "HW4-1_from_initial_joint_position") {
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -30.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		for (int i = 0; i<DOF; i++){
+			Kp_joint_(i, i) = 400;
+			Kv_joint_(i, i) = 40;
+		}
+		moveJointPositionbyTorque(q_target, 0.5);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0)	setMode("HW4-1");
+	}
+	else if (control_mode_ == "HW4-1") { // Simple PD Controller (step input)
+		Vector7d q_target;		q_target << 0.0, 0.0, 0.0, -25.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		qdot_target_.setZero();
+
+		torque_desired_ = Kp_joint_*(q_target - q_) + Kv_joint_*(qdot_target_ - qdot_);
+
+		logData_JointError(q_target, q_);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0 || play_time_ - control_start_time_ > settling_time_)	setMode("Lock Joints");
+	}
+
+	else if (control_mode_ == "HW4-2(a)_from_initial_joint_position") {
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -30.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		for (int i = 0; i<DOF; i++)	{
+			Kp_joint_(i, i) = 400;
+			Kv_joint_(i, i) = 40;
+		}
+		moveJointPositionbyTorque(q_target, 0.5);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0)	setMode("HW4-2(a)");
+	}
+	else if (control_mode_ == "HW4-2(a)"){ // Simple PD Controller with gravity compensation (step input)
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -25.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		qdot_target_.setZero();
+
+		for (int i = 0; i<DOF; i++)	{
+			Kp_joint_(i, i) = 180;
+			Kv_joint_(i, i) = 0.8;
+		}
+		torque_desired_ = Kp_joint_*(q_target - q_) + Kv_joint_*(qdot_target_ - qdot_) + g_;
+
+		logData_JointError(q_target, q_);
+		if((q_target - q_).norm()*RAD2DEG < 1.0 || play_time_ - control_start_time_ > settling_time_)	setMode("Lock Joints");
+	}
+
+	else if (control_mode_ == "HW4-2(b)_from_initial_joint_position") {
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -30.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		for (int i = 0; i<DOF; i++)	{
+			Kp_joint_(i, i) = 400;
+			Kv_joint_(i, i) = 40;
+		}
+		moveJointPositionbyTorque(q_target, 0.5);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0)	setMode("HW4-2(b)");
+	}
+	else if (control_mode_ == "HW4-2(b)"){ // Simple PD Controller with gravity compensation (cubic spline input)
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -60.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		qdot_target_.setZero();
+		for (int i = 0; i < DOF; i++){
+			q_cubic_(i)	   = cubic	  (play_time_, control_start_time_, control_start_time_ + settling_time_, q_init_(i), q_target(i), qdot_init_(i), qdot_target_(i));
+			qdot_cubic_(i) = cubicDot (play_time_, control_start_time_, control_start_time_ + settling_time_, q_init_(i), q_target(i), qdot_init_(i), qdot_target_(i), hz_);
+		}
+		for (int i = 0; i<DOF; i++){
+			Kp_joint_(i, i) = 180;
+			Kv_joint_(i, i) = 0.8;
+		}
+		torque_desired_ = Kp_joint_ * (q_cubic_ - q_) + Kv_joint_ * (qdot_cubic_ - qdot_) + g_;
+
+		logData_JointError(q_target, q_);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0 || play_time_ - control_start_time_ > settling_time_)	setMode("Lock Joints");
+	}
+
+	else if (control_mode_ == "HW4-3(a)_from_initial_joint_position") {
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -30.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		for (int i = 0; i<DOF; i++)	{
+			Kp_joint_(i, i) = 400;
+			Kv_joint_(i, i) = 40;
+		}
+		moveJointPositionbyTorque(q_target, 0.5);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0)	setMode("HW4-3(a)");
+	}
+	else if (control_mode_ == "HW4-3(a)"){ // PD controller with dynamic compensation (step input)
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -25.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		qdot_target_.setZero();
+		for (int i = 0; i<DOF; i++)	{
+			Kp_joint_(i, i) = 400;
+			Kv_joint_(i, i) = 40;
+		}
+		torque_desired_ = m_*(Kp_joint_*(q_target - q_) + Kv_joint_*(qdot_target_ - qdot_)) + g_;
+
+		logData_JointError(q_target, q_);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0 || play_time_ - control_start_time_ > settling_time_)	setMode("Lock Joints");
+	}
+
+	else if (control_mode_ == "HW4-3(b)_from_initial_joint_position") {
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -30.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		for (int i = 0; i<DOF; i++)	{
+			Kp_joint_(i, i) = 400;
+			Kv_joint_(i, i) = 40;
+		}
+		moveJointPositionbyTorque(q_target, 0.5);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0)	setMode("HW4-3(b)");
+	}
+	else if (control_mode_ == "HW4-3(b)"){ // PD controller with dynamic compensation (cubic spline input) (W/ wn=20rad/s, critically damped)
+		Vector7d q_target;	q_target << 0.0, 0.0, 0.0, -60.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+
+		//Kp_joint_ = 400.0 * EYE(7);
+		//Kv_joint_ =  40.0 * EYE(7);
+
+		moveJointPositionbyTorque(q_target, settling_time_); // 함수에서 400, 40으로 세팅하게 바꿈
+
+		logData_JointError(q_target, q_);
+		if ((q_target - q_).norm()*RAD2DEG < 1.0 || play_time_ - control_start_time_ > settling_time_)	setMode("Lock Joints");
+	}
+#endif
 
 	else // --------------------------------------------------------------------------------------------------------------------------------------------
 	{
@@ -526,6 +710,16 @@ void ArmController::isMotionCompleted(Eigen::Vector3d position_target, Eigen::Ma
 	x_error_to_target_.block<3, 1>(0, 0) = position_target - x_;
 	x_error_to_target_.block<3, 1>(3, 0) = getPhi(rotation_, rotation_target);
 	if ((x_error_to_target_).norm() < tolerance)	setMode("Lock Joints");
+}
+
+bool ArmController::isMotionCompleted2(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance, string state) {
+	x_error_to_target_.block<3, 1>(0, 0) = position_target - x_;
+	x_error_to_target_.block<3, 1>(3, 0) = getPhi(rotation_, rotation_target);
+	if ((x_error_to_target_).norm() < tolerance) {
+		setMode(state);
+		return 1;
+	}
+	return 0;
 }
 
 void ArmController::moveTaskPositionCLIK(const Vector3d &position_now, const Vector3d &position_target,
@@ -606,7 +800,20 @@ void ArmController::moveJointPosition(const Vector7d &q_target, double settling_
 								control_start_time_,
 								control_start_time_ + settling_time,
 								q_init_, q_target,
-								qdot_init_, qdot_desired_);
+								qdot_init_, qdot_target_);
+}
+
+void ArmController::moveJointPositionbyTorque(const Vector7d &q_target, double settling_time)
+{
+	Kp_joint_ = 400.0 * EYE(7);
+	Kv_joint_ =  40.0 * EYE(7);
+
+	for (int i = 0; i < DOF; i++)
+	{
+		q_cubic_(i)	   = cubic	  (play_time_, control_start_time_, control_start_time_ + settling_time, q_init_(i), q_target(i), qdot_init_(i), qdot_target_(i));
+		qdot_cubic_(i) = cubicDot (play_time_, control_start_time_, control_start_time_ + settling_time, q_init_(i), q_target(i), qdot_init_(i), qdot_target_(i), hz_);
+	}
+	torque_desired_ = m_ * (Kp_joint_*(q_cubic_ - q_) + Kv_joint_ * (qdot_cubic_ - qdot_)) + g_;
 }
 
 
@@ -625,6 +832,8 @@ void ArmController::printState()
 		cout << "1. settling_time_ : "	<< std::fixed << std::setprecision(3) << settling_time_ << endl;
 		cout << "2. Kp_ : "				<< std::fixed << std::setprecision(3) << Kp_.diagonal().transpose() << endl;
 		cout << "3. W_  : "				<< std::fixed << std::setprecision(3) << W_.diagonal().transpose() << endl;
+		cout << "4. Kp_joint_  : "		<< std::fixed << std::setprecision(3) << Kp_joint_.diagonal().transpose() << endl;
+		cout << "5. Kv_joint_  : "		<< std::fixed << std::setprecision(3) << Kv_joint_.diagonal().transpose() << endl;
 		cout << "-------------------------------------------------------" << endl;
 		cout << "play_time_	: "			<< std::fixed << std::setprecision(3) << play_time_ << endl;
 		cout << "control_mode_	: "		<< std::fixed << control_mode_ << endl;
@@ -633,7 +842,7 @@ void ArmController::printState()
 		cout << "x2_		: "			<< std::fixed << std::setprecision(3) << x2_.transpose() << endl;
 		cout << "h2_		: "			<< std::fixed << std::setprecision(3) << h2_ << endl;
 		cout << "r_		: "				<< endl << std::fixed << std::setprecision(3) << rotation_.transpose() << endl;
-		cout << "q_		: "				<< std::fixed << std::setprecision(3) << q_.transpose() << endl;
+		cout << "q_		: "				<< std::fixed << std::setprecision(3) << RAD2DEG*q_.transpose() << endl;
 		//cout << "q_desired_	: "		<< std::fixed << std::setprecision(3) << q_desired_.transpose() << endl;
 		//cout << "deltq q	: "			<< std::fixed << std::setprecision(3) << (q_desired_ - q_).transpose() << endl;
 		cout << "torque_		: "		<< std::fixed << std::setprecision(3) << torque_.transpose() << endl;
@@ -663,16 +872,17 @@ void ArmController::initDimension()
 
 	qdot_target_.setZero();
 	qddot_.setZero();
-
 	x_target_.setZero();
+
 	q_desired_.setZero();
+	qdot_desired_.setZero();
 	torque_desired_.setZero();
 
 	g_temp_.resize(DOF);
 	m_temp_.resize(DOF, DOF);
 
 	/*---  Default Control Parameters (윤원재) ---*/
-	settling_time_ = 3.0;
+	settling_time_ = 2.0;
 
 	Vector6d Kp_vec;	Kp_vec << 120.0, 120.0, 120.0, 60.0, 60.0, 60.0;
 	Kp_ = Kp_vec.asDiagonal();
@@ -680,6 +890,8 @@ void ArmController::initDimension()
 	Vector7d W;		W << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;		
 	W_ = W.asDiagonal();
 
+	Kp_joint_ = 400.0 * EYE(7);
+	Kv_joint_ =  40.0 * EYE(7);
 }
 
 void ArmController::initModel()
@@ -727,7 +939,12 @@ void ArmController::initModel()
 	com_position_[3] = Vector3d(0.0331, -0.0266, 0.6914);
 	com_position_[4] = Vector3d(0.0013, 0.0423, 0.9243);
 	com_position_[5] = Vector3d(0.0421, -0.0103, 1.0482);
+#ifndef FINAL_PROJECT
 	com_position_[6] = Vector3d(0.1, -0.0120, 0.9536);
+#endif
+#ifdef FINAL_PROJECT
+	com_position_[6] = Vector3d(0.0871, 0.0, 0.9089);
+#endif
 
 	for (int i = 0; i < DOF; i++)
 		com_position_[i] -= global_joint_position[i];
@@ -782,6 +999,15 @@ void ArmController::initPosition()
 	q_init_ = q_;
 	q_desired_ = q_init_;
 }
+
+bool ArmController::projectFinish()
+{
+	if (0.48 < x_(0) && x_(0) < 0.52 && -0.2 < x_(1) && x_(1) < -0.16)
+		return true;
+	else
+		return false;
+}
+
 
 // ----------------------------------------------------
 

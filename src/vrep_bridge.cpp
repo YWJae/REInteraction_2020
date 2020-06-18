@@ -151,3 +151,16 @@ void VRepBridge::getHandle()
 	}
 	cout << "[INFO] The handle has been imported." << endl;
 }
+
+void VRepBridge::getProjectStartTime()
+{
+	project_start_time_ = extApi_getTimeInMs() / 1000.0;
+	cout << "Project Start: " << project_start_time_ << "second" << endl;
+}
+
+void VRepBridge::getProjectFinishTime()
+{
+	project_finish_time_ = extApi_getTimeInMs() / 1000.0;
+	cout << "Project Finish: " << project_finish_time_ << "second" << endl;
+	cout << "Project Duration: " << project_finish_time_ - project_start_time_ << "second" << endl;
+}
