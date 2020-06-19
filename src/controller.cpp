@@ -9,6 +9,33 @@
 using namespace DyrosMath;
 ofstream logfile;
 
+
+void ArmController::logData_task(Vector3d x_target, Matrix3d rotation_target) {
+	Vector3d phi_desired;	phi_desired = -getPhi(EYE(3), rotation_target);
+	Vector3d phi;			phi = -getPhi(EYE(3), rotation_);
+
+	logfile << play_time_ << "\t"
+			<< x_target(0) << "\t" << x_(0) << "\t"
+			<< x_target(1) << "\t" << x_(1) << "\t"
+			<< x_target(2) << "\t" << x_(2) << "\t"
+			<< phi_desired(0) << "\t" << phi(0) << "\t"
+			<< phi_desired(1) << "\t" << phi(1) << "\t"
+			<< phi_desired(2) << "\t" << phi(2) << "\t"
+			<< endl;
+}
+
+void ArmController::logData_joint(Vector7d q_target) {
+	logfile << play_time_  << "\t"
+			<< q_target(0) << "\t" << q_(0) << "\t"
+			<< q_target(1) << "\t" << q_(1) << "\t"
+			<< q_target(2) << "\t" << q_(2) << "\t"
+			<< q_target(3) << "\t" << q_(3) << "\t"
+			<< q_target(4) << "\t" << q_(4) << "\t"
+			<< q_target(5) << "\t" << q_(5) << "\t"
+			<< q_target(6) << "\t" << q_(6) << "\t"
+			<< endl;
+}
+
 void ArmController::logData(Eigen::Vector6d x_error) {
 	Vector3d position_target; position_target << 0.25, 0.28, 0.65;
 	Matrix3d rotation_target; rotation_target << 0, -1, 0,
@@ -91,8 +118,8 @@ void ArmController::calcKinematics(Vector7d q, Vector7d qdot)
 
 void ArmController::compute()
 {
-	/////* -----		           (pre-defined) Special Joint/Task State                     ----- */////
-	//double settling_time = 5.0;
+	/////* -----		           (pre-defined) Special Joint/Task State (¿øÀç)                    ----- */////
+
 #ifdef FINAL_PROJECT
 	double dX(0.08), dY(0.18), dZ(0.05);
 	Vector7d joint_initial_position;	joint_initial_position << 0.0, 30.0*DEG2RAD, 0.0, (-120.0)*DEG2RAD, 0.0, (150.0)*DEG2RAD, 0.0;
@@ -101,17 +128,16 @@ void ArmController::compute()
 														   0, -1, 0,
 														   0, 0, -1;
 
-	Vector3d target_p1;					target_p1 << center[0] + dX, center[1] - dY, center[2];
-	Vector3d target_p2;					target_p2 << center[0] - dX, center[1] + dY, center[2];
-	Vector3d target_p3;					target_p3 << center[0] + dX, center[1] + dY, center[2];
-	Vector3d target_p4;					target_p4 << center[0] - dX, center[1] - dY, center[2];
+	Vector3d target_p1;					target_p1 << center(0) + dX, center(1) - dY, center(2);
+	Vector3d target_p2;					target_p2 << center(0) - dX, center(1) + dY, center(2);
+	Vector3d target_p3;					target_p3 << center(0) + dX, center(1) + dY, center(2);
+	Vector3d target_p4;					target_p4 << center(0) - dX, center(1) - dY, center(2);
 
-	Vector3d init_wp1;					init_wp1 << center[0],    center[1],    center[2] + dZ;
-	Vector3d init_wp2;					init_wp2 << target_p1[0], target_p1[1], target_p1[2] + dZ;
+	Vector3d init_wp1;					init_wp1 << center(0),    center(1),    center(2) + dZ;
+	Vector3d init_wp2;					init_wp2 << target_p1(0), target_p1(1), target_p1(2) + dZ;
 
 
 #endif
-
 
 #ifdef HW2
 	Vector7d joint_initial_position;	joint_initial_position << 0.0, 0.0, 0.0, -M_PI / 2, 0.0, M_PI / 2, 0.0;
@@ -125,9 +151,6 @@ void ArmController::compute()
 	Vector3d x1_target;		x1_target << 0.25, 0.28, 0.65;
 	Vector3d x2_target;		x2_target << 0.0, -0.15, 0.6;
 #endif
-
-
-
 
 
 	/////* -----          ( q_ ) -> Kinematics & Dynamics Calculation -> EEF Pose, Jacobian          ----- */////
@@ -149,6 +172,7 @@ void ArmController::compute()
 	m_inverse_ = m_.inverse();
 	for (int i = 0; i<2; i++)	j_.block<3, DOF>(i * 3, 0) = j_temp_.block<3, DOF>(3 - i * 3, 0);
 	j_v_ = j_.block < 3, DOF>(0, 0);
+	j_w_ = j_.block < 3, DOF>(3, 0);
 	j_inverse_ = j_.transpose() * ((j_ * j_.transpose()).inverse());
 
 	x_ = x_;
@@ -246,6 +270,7 @@ void ArmController::compute()
 			cout << "3. Weight Matrix (W)" << endl;
 			cout << "4. Torque Control P-Gain (Kp_joint)" << endl;
 			cout << "5. Torque Control D-Gain (Kv_joint)" << endl;
+			cout << "6. Obstacle Potential Weight(K_obstacle)" << endl;
 			cout << "Enter number to change parameters: ";
 			if (!(cin >> n))	throw 0;
 			cout << "=======================================" << endl;
@@ -309,6 +334,12 @@ void ArmController::compute()
 				
 				cout << "Success: Parameters have been changed: " << "Kv_joint = " << endl << Kv_joint_ << endl;
 			}
+			// 6. K_obstacle_
+			else if (n == 6) {
+				cout << "Enter K_obstacle: ";
+				if (!(cin >> K_obstacle_))	throw 2;
+				cout << "Success: Parameters have been changed: " << "K_obstacle = " << endl << K_obstacle_ << endl;
+			}
 			cout << "=======================================" << endl;
 		}
 		catch (int e) {
@@ -335,21 +366,21 @@ void ArmController::compute()
 							 rotation_from_q_desired_, rotation_target,
 							 j_inverse_from_q_desired_, settling_time_);
 
-		isMotionCompleted2(init_wp1, rotation_target, ERROR_TOLERANCE, "init_2");
+		isMotionCompleted_Task(init_wp1, rotation_target, ERROR_TOLERANCE, "init_2");
 	}
 	else if (control_mode_ == "init_2") {
 		moveTaskPositionCLIK(x_from_q_desired_, init_wp2,
 							 rotation_from_q_desired_, rotation_target,
 							 j_inverse_from_q_desired_, settling_time_);
 
-		isMotionCompleted2(init_wp2, rotation_target, ERROR_TOLERANCE, "init_3");
+		isMotionCompleted_Task(init_wp2, rotation_target, ERROR_TOLERANCE, "init_3");
 	}
 	else if (control_mode_ == "init_3") {
 		moveTaskPositionCLIK(x_from_q_desired_, target_p1,
 							 rotation_from_q_desired_, rotation_target,
 							 j_inverse_from_q_desired_, settling_time_);
 
-		isMotionCompleted2(target_p1, rotation_target, ERROR_TOLERANCE, "Lock Joint");
+		isMotionCompleted_Task(target_p1, rotation_target, ERROR_TOLERANCE, "Lock Joint");
 	}
 
 	
@@ -439,7 +470,7 @@ void ArmController::compute()
 							 j_inverse_from_q_desired_, settling_time_);
 
 		isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
-		logData(x_error_);
+		logData_task(position_target, rotation_target);
 	}
 
 	// --- HW2-3. CLIK with Weight Matrix ( W=diag(1, 1, 1, 0.01, 1, 1, 1) ) --- //
@@ -695,6 +726,185 @@ void ArmController::compute()
 	}
 #endif
 
+#ifdef HW5
+	else if (control_mode_ == "HW5-0") {
+		Vector7d q_target;		q_target << 0.0, 0.0, 0.0, -90.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+
+		moveJointPositionbyTorque(q_target, settling_time_);
+		isMotionCompleted_Joint(q_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+
+	else if (control_mode_ == "HW5-1(a)") {
+		Vector7d q_target;		q_target << 0.0, 0.0, 0.0, -90.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+		
+		Vector3d x_target;			x_target << x_init_(0), x_init_(1) + 0.02, x_init_(2);
+		Vector7d x_dot_target;		x_dot_target.setZero();
+		Matrix3d rotation_target;	rotation_target = rotation_init_;
+
+		f_star_ = Kp_task_ * (x_target - x_) + Kv_task_ * (x_dot_target.block<3,1>(0,0) - x_dot_.block<3, 1>(0, 0)); // desired force input
+		m_star_ = -Kp_task_ * getPhi(rotation_, rotation_target) - Kv_task_ * x_dot_.block<3, 1>(3, 0); // desired moment input
+		F_star_ << f_star_, m_star_; // desired force & moment input
+
+		Vector7d torque_null;	torque_null = m_ * (Kp_joint_ * (q_target - q_) - Kv_joint_ * qdot_); // force control null space torque input
+
+		m_task_ = (j_ * m_.inverse() * j_.transpose()).inverse(); // Mass matrix in task space
+		j_dc_inv_transpose_ = m_task_ * j_ * m_.inverse(); // Transpose of Dynamic consistent Jacobian inverse
+		
+		torque_desired_ = j_.transpose() * m_task_ * F_star_  +  (EYE(7) - j_.transpose() * j_dc_inv_transpose_) * torque_null  +  g_;
+
+		logData_task(x_target, rotation_target);
+		isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+
+	else if (control_mode_ == "HW5-1(b)") {
+		Vector7d q_target;		q_target << 0.0, 0.0, 0.0, -90.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+
+		Vector3d x_target;			x_target << x_init_(0), x_init_(1) + 0.10, x_init_(2);
+		Vector7d x_dot_target;		x_dot_target.setZero();
+		Matrix3d rotation_target;	rotation_target = rotation_init_;
+		Vector3d x_desired;
+		Vector3d x_dot_desired;
+
+		for (int i = 0; i < 3; i++) {
+			x_desired(i)	 = cubic	(play_time_, control_start_time_, control_start_time_ + settling_time_, x_init_(i), x_target(i), 0, 0);
+			x_dot_desired(i) = cubicDot (play_time_, control_start_time_, control_start_time_ + settling_time_, x_init_(i), x_target(i), 0, 0, hz_);
+		}
+
+		f_star_ = Kp_task_ * (x_desired - x_) + Kv_task_ * (x_dot_desired.block<3, 1>(0, 0) - x_dot_.block<3, 1>(0, 0)); // desired force input
+		m_star_ = -Kp_task_ * getPhi(rotation_, rotation_target) - Kv_task_ * x_dot_.block<3, 1>(3, 0); // desired moment input
+		F_star_ << f_star_, m_star_; // desired force & moment input
+
+		Vector7d torque_null;	torque_null = m_ * (Kp_joint_ * (q_target - q_) - Kv_joint_ * qdot_); // force control null space torque input
+
+		m_task_ = (j_ * m_.inverse() * j_.transpose()).inverse(); // Mass matrix in task space
+		j_dc_inv_transpose_ = m_task_ * j_ * m_.inverse(); // Transpose of Dynamic consistent Jacobian inverse
+
+		torque_desired_ = j_.transpose() * m_task_ * F_star_ + (EYE(7) - j_.transpose() * j_dc_inv_transpose_) * torque_null + g_;
+
+		logData_task(x_target, rotation_target);
+		isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+	
+	else if (control_mode_ == "HW5-2") {
+		Vector7d q_target;		q_target << 0.0, -60.0*DEG2RAD, 0.0, -90.0*DEG2RAD, 0.0, 30.0*DEG2RAD, 0.0;
+
+		moveJointPositionbyTorque(q_target, settling_time_);
+		isMotionCompleted_Joint(q_target, ERROR_TOLERANCE, "HW5-2_core");
+	}
+	else if (control_mode_ == "HW5-2_core") {
+		Vector7d q_target;		q_target << 0.0, -60.0*DEG2RAD, 0.0, -90.0*DEG2RAD, 0.0, 30.0*DEG2RAD, 0.0;
+
+		Vector3d x_target;			x_target << 0.3, -0.012, 0.52;
+		Vector7d x_dot_target;		x_dot_target.setZero();
+		Matrix3d rotation_target;	rotation_target = rotation_init_;
+		Vector3d x_desired;
+		Vector3d x_dot_desired;
+
+		double x_dot_max(0.3);
+
+		for (int i = 0; i < 3; i++) {
+			x_desired(i) = cubic(play_time_, control_start_time_, control_start_time_ + settling_time_, x_init_(i), x_target(i), 0, 0);
+			x_dot_desired(i) = Kp_task_(i, i) / Kv_task_(i, i) * (x_desired(i) - x_(i));
+			if (abs(x_dot_desired(i)) >= x_dot_max)		x_dot_desired(i) = x_dot_max * copysign(1.0, x_desired(i) - x_(i));
+		}
+
+		f_star_ = Kv_task_ * (x_dot_desired.block<3, 1>(0, 0) - x_dot_.block<3, 1>(0, 0)); // desired force input
+		m_star_ = -Kp_task_ * getPhi(rotation_, rotation_target) - Kv_task_ * x_dot_.block<3, 1>(3, 0); // desired moment input
+		F_star_ << f_star_, m_star_; // desired force & moment input
+
+		Vector7d torque_null;	torque_null = m_ * (Kp_joint_ * (q_target - q_) - Kv_joint_ * qdot_); // force control null space torque input
+
+		m_task_ = (j_ * m_.inverse() * j_.transpose()).inverse(); // Mass matrix in task space
+		j_dc_inv_transpose_ = m_task_ * j_ * m_.inverse(); // Transpose of Dynamic consistent Jacobian inverse
+
+		torque_desired_ = j_.transpose() * m_task_ * F_star_ + (EYE(7) - j_.transpose() * j_dc_inv_transpose_) * torque_null + g_;
+
+		logData_task(x_target, rotation_target);
+		isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+#endif
+
+#ifdef HW6
+	// HW6-2-1: Torque control - joint space
+	else if (control_mode_ == "HW6-2-1(a)") {
+		Vector7d q_target;		q_target << 0.0, 0.0, 0.0, -30.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+
+		moveJointPositionbyTorque(q_target, settling_time_);
+		logData_joint(q_target);
+		isMotionCompleted_Joint(q_target, ERROR_TOLERANCE, "HW6-2-1(b)");
+	}
+	else if (control_mode_ == "HW6-2-1(b)") {
+		Vector7d q_target;		q_target << 0.0, 0.0, 0.0, -60.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+
+		moveJointPositionbyTorque(q_target, settling_time_);
+
+		logData_joint(q_target);
+		isMotionCompleted_Joint(q_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+
+	// HW6-2-2:Torque control - task space (PD controller)
+	else if (control_mode_ == "HW6-2-2(a)") {
+		Vector7d q_target;		q_target << 0.0, 0.0, 0.0, -90.0*DEG2RAD, 0.0, 90.0*DEG2RAD, 0.0;
+
+		moveJointPositionbyTorque(q_target, settling_time_);
+		logData_joint(q_target);
+		isMotionCompleted_Joint(q_target, ERROR_TOLERANCE, "HW6-2-2(b)");
+	}
+	else if (control_mode_ == "HW6-2-2(b)") {
+		Vector3d x_target;			x_target << x_init_(0), x_init_(1) + 0.10, x_init_(2);
+		Matrix3d rotation_target;	rotation_target = rotation_init_;
+
+		moveTaskPositionbyTorquePD(x_target, rotation_target, settling_time_);
+
+		logData_task(x_target, rotation_target);
+		isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+
+	// HW6-2-3:Torque control - task space (velocity saturation controller)
+	else if (control_mode_ == "HW6-2-3(a)") {
+		Vector7d q_target;		q_target << 0.0, -60.0*DEG2RAD, 0.0, -90.0*DEG2RAD, 0.0, 30.0*DEG2RAD, 0.0;
+
+		moveJointPositionbyTorque(q_target, settling_time_);
+		logData_joint(q_target);
+		isMotionCompleted_Joint(q_target, ERROR_TOLERANCE, "HW6-2-3(b)");
+	}
+	else if (control_mode_ == "HW6-2-3(b)") {
+		Vector3d x_target;			x_target << 0.3, -0.012, 0.52;
+		Matrix3d rotation_target;	rotation_target = rotation_init_;
+		double x_dot_max(0.3);
+
+		moveTaskPositionbyTorqueVelSat(x_target, rotation_target, x_dot_max, settling_time_);
+
+		logData_task(x_target, rotation_target);
+		isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+	// HW6-2-4:Torque control - task space (avoid obstacle, velocity saturation controller)
+	else if (control_mode_ == "HW6-2-4(a)") {
+		Vector7d q_target;		q_target << 0.0, -60.0*DEG2RAD, 0.0, -90.0*DEG2RAD, 0.0, 30.0*DEG2RAD, 0.0;
+
+		moveJointPositionbyTorque(q_target, settling_time_);
+		logData_joint(q_target);
+		isMotionCompleted_Joint(q_target, ERROR_TOLERANCE, "HW6-2-4(b)");
+	}
+	else if (control_mode_ == "HW6-2-4(b)") {
+		Vector3d x_target;			x_target   << 0.30, -0.012, 0.52;
+		Vector3d x_obstacle;		x_obstacle << 0.15, -0.012, 0.65;
+		Matrix3d rotation_target;	rotation_target = rotation_init_;
+		double distance_from_obstacle;	distance_from_obstacle = (x_ - x_obstacle).norm();
+
+		double d0(0.15);
+		double x_dot_max(0.3);
+
+		moveTaskPositionbyTorqueAvoidObstacle(x_target, rotation_target, x_dot_max, x_obstacle, d0, settling_time_);
+
+		logData_task(x_target, rotation_target);
+		isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+	}
+
+
+
+#endif
+
 	else // --------------------------------------------------------------------------------------------------------------------------------------------
 	{
 		torque_desired_ = g_;
@@ -712,10 +922,18 @@ void ArmController::isMotionCompleted(Eigen::Vector3d position_target, Eigen::Ma
 	if ((x_error_to_target_).norm() < tolerance)	setMode("Lock Joints");
 }
 
-bool ArmController::isMotionCompleted2(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance, string state) {
+bool ArmController::isMotionCompleted_Task(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance, string state) {
 	x_error_to_target_.block<3, 1>(0, 0) = position_target - x_;
 	x_error_to_target_.block<3, 1>(3, 0) = getPhi(rotation_, rotation_target);
 	if ((x_error_to_target_).norm() < tolerance) {
+		setMode(state);
+		return 1;
+	}
+	return 0;
+}
+
+bool ArmController::isMotionCompleted_Joint(Eigen::Vector7d q_target, double tolerance, string state) {
+	if ((q_target - q_).norm() < tolerance) {
 		setMode(state);
 		return 1;
 	}
@@ -762,9 +980,6 @@ void ArmController::moveTaskPositionCLIK(const Vector3d &position_now, const Vec
 	q_desired_ = q_ + j_inverse_from_q_desired_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
 
 	isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
-
-	//logfile << play_time_ << "\t" << q_(3) << endl;
-	logData(x_error_);
 }
 
 void ArmController::moveTaskPosition(const Vector3d &position_now, const Vector3d &position_target,
@@ -803,11 +1018,7 @@ void ArmController::moveJointPosition(const Vector7d &q_target, double settling_
 								qdot_init_, qdot_target_);
 }
 
-void ArmController::moveJointPositionbyTorque(const Vector7d &q_target, double settling_time)
-{
-	Kp_joint_ = 400.0 * EYE(7);
-	Kv_joint_ =  40.0 * EYE(7);
-
+void ArmController::moveJointPositionbyTorque(const Vector7d &q_target, double settling_time) {
 	for (int i = 0; i < DOF; i++)
 	{
 		q_cubic_(i)	   = cubic	  (play_time_, control_start_time_, control_start_time_ + settling_time, q_init_(i), q_target(i), qdot_init_(i), qdot_target_(i));
@@ -815,6 +1026,77 @@ void ArmController::moveJointPositionbyTorque(const Vector7d &q_target, double s
 	}
 	torque_desired_ = m_ * (Kp_joint_*(q_cubic_ - q_) + Kv_joint_ * (qdot_cubic_ - qdot_)) + g_;
 }
+
+void ArmController::moveTaskPositionbyTorquePD(const Vector3d &x_target, const Matrix3d &rotation_target, double settling_time) {
+	for (int i = 0; i < 3; i++) {
+		x_desired_(i)	  = cubic	 (play_time_, control_start_time_, control_start_time_ + settling_time_, x_init_(i), x_target(i), 0, 0);
+		x_dot_desired_(i) = cubicDot (play_time_, control_start_time_, control_start_time_ + settling_time_, x_init_(i), x_target(i), 0, 0, hz_);
+	}
+
+	f_star_ = Kp_task_ * (x_desired_ - x_) + Kv_task_ * (x_dot_desired_.block<3, 1>(0, 0) - x_dot_.block<3, 1>(0, 0)); // desired force input
+	m_star_ = -Kp_task_ * getPhi(rotation_, rotation_target) - Kv_task_ * x_dot_.block<3, 1>(3, 0); // desired moment input
+	F_star_ << f_star_, m_star_; // desired force & moment input
+
+	Vector7d torque_null;	torque_null = m_ * (Kp_joint_ * (q_init_ - q_) - Kv_joint_ * qdot_); // force control null space torque input
+
+	m_task_ = (j_ * m_.inverse() * j_.transpose()).inverse(); // Mass matrix in task space
+	j_dc_inv_transpose_ = m_task_ * j_ * m_.inverse(); // Transpose of Dynamic consistent Jacobian inverse
+
+	torque_desired_ = j_.transpose() * m_task_ * F_star_ + (EYE(7) - j_.transpose() * j_dc_inv_transpose_) * torque_null + g_;
+
+	isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+}
+
+void ArmController::moveTaskPositionbyTorqueVelSat(const Vector3d &x_target, const Matrix3d &rotation_target, double x_dot_max, double settling_time) {
+	for (int i = 0; i < 3; i++) {
+		x_desired_(i) = cubic(play_time_, control_start_time_, control_start_time_ + settling_time_, x_init_(i), x_target(i), 0, 0);
+		x_dot_desired_(i) = Kp_task_(i, i) / Kv_task_(i, i) * (x_desired_(i) - x_(i));
+		if (abs(x_dot_desired_(i)) >= x_dot_max)	x_dot_desired_(i) = x_dot_max * copysign(1.0, x_desired_(i) - x_(i));
+	}
+
+	f_star_ = Kv_task_ * (x_dot_desired_.block<3, 1>(0, 0) - x_dot_.block<3, 1>(0, 0)); // desired force input
+	m_star_ = -Kp_task_ * getPhi(rotation_, rotation_target) - Kv_task_ * x_dot_.block<3, 1>(3, 0); // desired moment input
+	F_star_ << f_star_, m_star_; // desired force & moment input
+
+	Vector7d torque_null;	torque_null = m_ * (Kp_joint_ * (q_init_ - q_) - Kv_joint_ * qdot_); // force control null space torque input
+
+	m_task_ = (j_ * m_.inverse() * j_.transpose()).inverse(); // Mass matrix in task space
+	j_dc_inv_transpose_ = m_task_ * j_ * m_.inverse(); // Transpose of Dynamic consistent Jacobian inverse
+
+	torque_desired_ = j_.transpose() * m_task_ * F_star_ + (EYE(7) - j_.transpose() * j_dc_inv_transpose_) * torque_null + g_;
+
+	isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+}
+
+void ArmController::moveTaskPositionbyTorqueAvoidObstacle(const Vector3d &x_target, const Matrix3d &rotation_target, double x_dot_max, const Vector3d &x_obstacle, double d0, double settling_time) {
+	
+	double distance_from_obstacle;	distance_from_obstacle = (x_ - x_obstacle).norm();
+	Vector3d vec_eye3;	vec_eye3 << 1.0, 1.0, 1.0;
+
+	for (int i = 0; i < 3; i++) {
+		x_desired_(i) = cubic(play_time_, control_start_time_, control_start_time_ + settling_time_, x_init_(i), x_target(i), 0, 0);
+		x_dot_desired_(i) = Kp_task_(i, i) / Kv_task_(i, i) * (x_desired_(i) - x_(i));
+		if (abs(x_dot_desired_(i)) >= x_dot_max)	x_dot_desired_(i) = x_dot_max * copysign(1.0, x_desired_(i) - x_(i));
+	}
+	
+	f_star_attractive_ = Kv_task_ * (x_dot_desired_.block<3, 1>(0, 0) - x_dot_.block<3, 1>(0, 0)); // desired force input
+	if (distance_from_obstacle < d0)	f_star_repulsive_ = -K_obstacle_ * (1.0 / distance_from_obstacle  -  1.0 / d0) * (-1.0 / distance_from_obstacle * distance_from_obstacle) * vec_eye3;
+	else f_star_repulsive_ << 0.0, 0.0, 0.0;
+		
+	f_star_ = f_star_attractive_ + f_star_repulsive_;
+	m_star_ = -Kp_task_ * getPhi(rotation_, rotation_target) - Kv_task_ * x_dot_.block<3, 1>(3, 0); // desired moment input
+	F_star_ << f_star_, m_star_; // desired force & moment input
+
+	Vector7d torque_null;	torque_null = m_ * (Kp_joint_ * (q_init_ - q_) - Kv_joint_ * qdot_); // force control null space torque input
+
+	m_task_ = (j_ * m_.inverse() * j_.transpose()).inverse(); // Mass matrix in task space
+	j_dc_inv_transpose_ = m_task_ * j_ * m_.inverse(); // Transpose of Dynamic consistent Jacobian inverse
+
+	torque_desired_ = j_.transpose() * m_task_ * F_star_ + (EYE(7) - j_.transpose() * j_dc_inv_transpose_) * torque_null + g_;
+
+	isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
+}
+
 
 
 void ArmController::printState()
@@ -834,6 +1116,7 @@ void ArmController::printState()
 		cout << "3. W_  : "				<< std::fixed << std::setprecision(3) << W_.diagonal().transpose() << endl;
 		cout << "4. Kp_joint_  : "		<< std::fixed << std::setprecision(3) << Kp_joint_.diagonal().transpose() << endl;
 		cout << "5. Kv_joint_  : "		<< std::fixed << std::setprecision(3) << Kv_joint_.diagonal().transpose() << endl;
+		cout << "6. K_obstacle_  : "	<< std::fixed << std::setprecision(3) << K_obstacle_ << endl;
 		cout << "-------------------------------------------------------" << endl;
 		cout << "play_time_	: "			<< std::fixed << std::setprecision(3) << play_time_ << endl;
 		cout << "control_mode_	: "		<< std::fixed << control_mode_ << endl;
@@ -892,6 +1175,11 @@ void ArmController::initDimension()
 
 	Kp_joint_ = 400.0 * EYE(7);
 	Kv_joint_ =  40.0 * EYE(7);
+
+	Kp_task_ = 400.0 * EYE(3);
+	Kv_task_ =  40.0 * EYE(3);
+
+	K_obstacle_ = 0.1;
 }
 
 void ArmController::initModel()

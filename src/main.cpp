@@ -8,8 +8,8 @@
 
 using namespace std;
 
-int main()
-{
+int main(){
+
 #ifdef TORQUE_CONTROL_MODE
 	VRepBridge vb(VRepBridge::CTRL_TORQUE); // Torque controlled
 	const double hz = 1000;
@@ -130,6 +130,37 @@ int main()
 				//ac.setMode("HW4-2(a)");
 				break;
 #endif
+
+#ifdef HW5
+			case '0':
+				ac.setMode("HW5-0");
+				break;
+			case '1':
+				ac.setMode("HW5-1(a)");
+				break;
+			case '2':
+				ac.setMode("HW5-1(b)");
+				break;
+			case '3':
+				ac.setMode("HW5-2");
+				break;
+#endif
+
+#ifdef HW6
+			case '1':
+				ac.setMode("HW6-2-1(a)");
+				break;
+			case '2':
+				ac.setMode("HW6-2-2(a)");
+				break;
+			case '3':
+				ac.setMode("HW6-2-3(a)");
+				break;
+			case '4':
+				ac.setMode("HW6-2-4(a)");
+				break;
+#endif
+
 			case 'i':
 				ac.setMode("joint_ctrl_init");
 				break;
@@ -166,11 +197,9 @@ int main()
 			vb.write();
 			vb.simLoop();
 #ifdef FINAL_PROJECT
-			if (ac.projectFinish())
-				vb.getProjectFinishTime();
+			if (ac.projectFinish())	  vb.getProjectFinishTime();
 		}
 #endif
 	}
-
 	return 0;
 }

@@ -3,7 +3,6 @@
 #define CONTROLLER_H_
 
 #define FINAL_PROJECT
-
 //#define HW2
 //#define HW3
 //#define HW4
@@ -54,6 +53,8 @@ class ArmController
 	Vector3d x_;
 	Vector3d x_from_q_desired_; // 추가 (ETL)
 	Vector3d x_dot_init_;
+	Vector3d x_desired_;
+	Vector3d x_dot_desired_;
 
 	// Task Transition (Joint 4 기준 Kinematics) 
 	Vector3d x1_;
@@ -110,12 +111,24 @@ class ArmController
 	Vector6d x_error_; // dX (dx, dy, dz, drx, dry, drz)
 	Vector6d x_error_to_target_; // error to the target pose from current pose // 추가 (윤원재)
 
-								 // Dynamics
-	Vector7d g_; // Gravity torque
-	Matrix7d m_; // Mass matrix
-	Matrix7d m_inverse_; // Inverse of mass matrix
+
+	Vector7d g_; // Gravity torque (joint space)
+	Matrix7d m_; // Mass matrix (joint space)
+	Matrix7d m_inverse_; // Inverse of mass matrix (joint space)
 	Matrix7d W_; // 추가 (윤원재)
 	Matrix6d Kp_; // 추가 (윤원재)
+
+	Matrix6d m_task_; // Mass matrix (task space)
+
+	Matrix3d Kp_task_; // position gain (task space control)
+	Matrix3d Kv_task_; // velocity gain (task space control)
+	Vector6d F_star_; // desired force & moment
+	Vector3d f_star_attractive_; // attractive force
+	Vector3d f_star_repulsive_;  // repulsive force
+	double K_obstacle_;
+	Vector3d f_star_; // desired force
+	Vector3d m_star_; // desired moment
+
 
 				  // For controller
 	Matrix<double, 3, 7> j_v_;	// Linear velocity Jacobian matrix
@@ -124,7 +137,8 @@ class ArmController
 	Matrix<double, 6, 7> j_from_q_desired_; // 추가 (ETL)
 	MatrixXd j_temp_from_q_desired_; // 추가 (ETL)
 	Matrix<double, 7, 6> j_inverse_from_q_desired_; // 추가 (ETL)
-	Matrix<double, 7, 6> j_inverse_;	// Jacobain inverse storage 
+	Matrix<double, 7, 6> j_inverse_;	// Jacobain inverse storage
+	Matrix<double, 6, 7> j_dc_inv_transpose_; // Dynamic Consistent Jacobian (for task space control)
 
 	VectorXd q_temp_;	// For RBDL 
 	VectorXd qdot_temp_;
@@ -199,16 +213,22 @@ public:
 	bool projectFinish();
 
 	void calcKinematics(Vector7d q, Vector7d qdot);
+	void logData_joint(Vector7d q_target);
+	void logData_task(Vector3d x_target, Matrix3d rotation_target);
 	void logData(Eigen::Vector6d x_error);
 	void logData_TaskTransition(Eigen::Vector3d x1, Eigen::Vector3d x2);
 	void logData_JointError(Eigen::Vector7d q_target, Eigen::Vector7d q);
 	void isMotionCompleted(Eigen::Vector3d, Eigen::Matrix3d rotation_target, double tolerance);
-	bool isMotionCompleted2(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance, string state);
+	bool isMotionCompleted_Task(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance, string state);
+	bool isMotionCompleted_Joint(Eigen::Vector7d q_target, double tolerance, string state);
 	void moveTaskPositionCLIK(const Vector3d &position_now, const Vector3d &position_target,
 							  const Matrix3d &rotation_now, const Matrix3d &rotation_target,
 							  const Matrix<double, 7, 6> &jacobian_inverse,
 							  double settling_time);
 	void moveJointPositionbyTorque(const Vector7d &q_target, double settling_time);
+	void moveTaskPositionbyTorquePD(const Vector3d &x_target, const Matrix3d &rotation_target, double settling_time);
+	void moveTaskPositionbyTorqueVelSat(const Vector3d &x_target, const Matrix3d &rotation_target, double x_dot_max, double settling_time);
+	void moveTaskPositionbyTorqueAvoidObstacle(const Vector3d &x_target, const Matrix3d &rotation_target, double x_dot_max, const Vector3d &x_obstacle, double d0, double settling_time);
 };
 
 #endif
