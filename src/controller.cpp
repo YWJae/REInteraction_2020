@@ -4,7 +4,35 @@
 #include <iomanip>
 #include <cmath>
 
-#define ERROR_TOLERANCE 0.001 // [m]
+#define ERROR_TOLERANCE 0.001   // [m]
+#define D2R 0.5
+
+/*--- FINAL PROJECT (fixed value) ---*/
+double center[2]   = {  0.580, 0.150 };
+double x_bounds[2] = { -0.100, 0.100 }; // 경기장 X bound
+double y_bounds[2] = { -0.200, 0.200 }; // 경기장 Y bound
+
+double start[2]	   = { 0.08, -0.18 };  // position 1`
+double target1[2]  = {-0.08,  0.18 };  // position 2
+double target2[2]  = { 0.08,  0.18 };  // position 3
+double target3[2]  = {-0.08, -0.18 };  // position 4
+
+/*--- FINAL PROJECT (tuning value) ---*/
+double obstacle_1[3] = { 0.550 - center[0],  0.145, 0.07 * D2R };
+double obstacle_2[3] = { 0.635 - center[0],  0.075, 0.10 * D2R };
+double obstacle_3[3] = { 0.545 - center[0], -0.105, 0.05 * D2R };
+#define WAYPOINT_TOLERANCE 0.005 // [m]
+#define WAYPOINT_SETTLING_TIME 0.5 // [sec]
+#define PADDING_OBSTACLE 0.01   // [m]
+#define WEIGHT_SPEED 0.5 // 현재위치 - waypoint 거리 비례하여 settling_time_으로 속도 조절 -> 여기의 weight
+#define SCALE_RRT 1.0 // RRT scaling factor
+
+double rrt_threshold = 0.001;
+double rrt_step_size = 0.001;
+int rrt_epsilon = 50;
+int rrt_max_iteration = 1000000;
+
+
 
 using namespace DyrosMath;
 ofstream logfile;
@@ -208,6 +236,9 @@ void ArmController::compute()
 
 	if (is_mode_changed_)
 	{
+		/*---  FINAL PROJECT  ---*/
+
+
 		logfile.close();
 		logfile.open(control_mode_ + ".txt");
 		is_mode_changed_ = false;
@@ -259,91 +290,53 @@ void ArmController::compute()
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	////* -----                       HOMEWORK   2020-26181   윤원재                      ----- *////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
-	else if (control_mode_ == "Change Parameters") 
+
+
+	
+#ifdef FINAL_PROJECT
+	else if (control_mode_ == "Change Parameters")
 	{
 		int n;
 
 		try {
 			cout << "=======================================" << endl;
-			cout << "1. Settling Time (t)" << endl;
-			cout << "2. Control Gain (Kp)" << endl;
-			cout << "3. Weight Matrix (W)" << endl;
-			cout << "4. Torque Control P-Gain (Kp_joint)" << endl;
-			cout << "5. Torque Control D-Gain (Kv_joint)" << endl;
-			cout << "6. Obstacle Potential Weight(K_obstacle)" << endl;
+			cout << "1. Settling time" << endl;
+			cout << "2. Waypoint tolerance [m]" << endl;
+			cout << "3. Speed gain (Kp)" << endl;
+			cout << "4. Obstacle padding [m]" << endl;
 			cout << "Enter number to change parameters: ";
 			if (!(cin >> n))	throw 0;
 			cout << "=======================================" << endl;
 
-			// 1.settling_time_
-			if (n == 1) {		
-				cout << "Enter settling time: ";
-				if (!(cin >> settling_time_))	throw 1;
-				cout << "Success: Parameters have been changed: " << "settling_time_ = " << settling_time_ << endl;
+			// 1. Settling time: settling_time_
+			if (n == 1) {
+				cout << "Enter Settling time [sec]: ";
+				if (!(cin >> wp_settling_time_))	throw 1;
+				cout << "Success: Parameters have been changed: " << "wp_settling_time_ = " << wp_settling_time_ << endl;
 			}
-			// 2. Kp_
-			else if (n == 2) {	
-				Vector6d Kp_vector; Kp_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-				for (int i = 0; i < 6; i++) {
-					cout << "Enter Kp(" << i << "): ";
-					if (!(cin >> Kp_vector(i)))	throw 2;
-				}
-				Kp_ = Kp_vector.asDiagonal();
-				cout << "Success: Parameters have been changed: " << "Kp = " << endl << Kp_ << endl;
+			// 2. Waypoint tolerance: wp_tolerance_
+			else if (n == 2) {
+				cout << "Enter Waypoint tolerance [m]: ";
+				if (!(cin >> wp_tolerance_))	throw 1;
+				cout << "Success: Parameters have been changed: " << "wp_tolerance_ = " << wp_tolerance_ << endl;
 			}
-			// 3. W_
-			else if (n == 3) {
-				Vector7d W_vector;	W_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-				for (int i = 0; i < 7; i++) {
-					cout << "Enter W(" << i << "): ";
-					if (!(cin >> W_vector(i)))	throw 2;
-				}
-				W_ = W_vector.asDiagonal();
-				cout << "Success: Parameters have been changed: " << "W = " << endl << W_ << endl;
+			// 3. Speed gain (Kp): weight_speed_
+			if (n == 3) {
+				cout << "Enter Speed gain: ";
+				if (!(cin >> weight_speed_))	throw 1;
+				cout << "Success: Parameters have been changed: " << "weight_speed_ = " << weight_speed_ << endl;
 			}
-			// 4. Kp_joint_
+			// 4. Obstacle padding: padding_obstacle_
 			else if (n == 4) {
-				
-				double Kp;
-				cout << "Enter Kp_joint: ";
-				if (!(cin >> Kp))	throw 2;
-				Kp_joint_ = Kp * EYE(7);
+				cout << "Enter Obstacle padding [m]: ";
+				if (!(cin >> padding_obstacle_))	throw 1;
+				cout << "Success: Parameters have been changed: " << "padding_obstacle_ = " << padding_obstacle_ << endl;
+			}
 
-				//Vector7d Kp_joint_vector;	Kp_joint_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-				//for (int i = 0; i < DOF; i++) {
-				//	cout << "Enter Kp_joint(" << i << "): ";
-				//	if (!(cin >> Kp_joint_vector(i)))	throw 2;
-				//}
-				//Kp_joint_ = Kp_joint_vector.asDiagonal();
-				
-				cout << "Success: Parameters have been changed: " << "Kp_joint = " << endl << Kp_joint_ << endl;
-			}
-			// 5. Kv_joint_
-			else if (n == 5) {
-				
-				double Kv;
-				cout << "Enter Kv_joint: ";
-				if (!(cin >> Kv))	throw 2;
-				Kv_joint_ = Kv * EYE(7);
-				//Vector7d Kv_joint_vector;	Kv_joint_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-				//for (int i = 0; i < DOF; i++) {
-				//	cout << "Enter Kv_joint(" << i << "): ";
-				//	if (!(cin >> Kv_joint_vector(i)))	throw 2;
-				//}
-				//Kv_joint_ = Kv_joint_vector.asDiagonal();
-				
-				cout << "Success: Parameters have been changed: " << "Kv_joint = " << endl << Kv_joint_ << endl;
-			}
-			// 6. K_obstacle_
-			else if (n == 6) {
-				cout << "Enter K_obstacle: ";
-				if (!(cin >> K_obstacle_))	throw 2;
-				cout << "Success: Parameters have been changed: " << "K_obstacle = " << endl << K_obstacle_ << endl;
-			}
 			cout << "=======================================" << endl;
 		}
 		catch (int e) {
-			cout << "Error: Parameters is not changed !!! (" << e << ")"<< endl;
+			cout << "Error: Parameters is not changed !!! (" << e << ")" << endl;
 			cout << "=======================================" << endl;
 
 			cin.clear();
@@ -351,8 +344,7 @@ void ArmController::compute()
 		}
 		setMode("Lock Joints");
 	}
-	
-#ifdef FINAL_PROJECT
+
 	else if (control_mode_ == "center") {
 		moveJointPosition(joint_initial_position, settling_time_);
 		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("Lock Joints");
@@ -383,7 +375,121 @@ void ArmController::compute()
 		isMotionCompleted_Task(target_p1, rotation_target, ERROR_TOLERANCE, "Lock Joint");
 	}
 
+	else if (control_mode_ == "ready") {
+		try {
+			double value;
+
+			cout << "Enter Obstacle(1)  Data: [X, Y, Radius]: ";
+			cout << "=======================================" << endl;
+
+			cout << "Enter 1st Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[0] = SCALE_RRT * value;
+			cout << "Enter 1st Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[1] = SCALE_RRT * value;
+			cout << "Enter 1st Obstacle -> R [m]:";			if (!(cin >> value))	throw 2;			obstacle_[2] = SCALE_RRT * (value + padding_obstacle_);
+																										
+			cout << "Enter 2nd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[3] = SCALE_RRT * value;
+			cout << "Enter 2nd Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[4] = SCALE_RRT * value;
+			cout << "Enter 2nd Obstacle -> R [m]:";			if (!(cin >> value))	throw 2;			obstacle_[5] = SCALE_RRT * (value + padding_obstacle_);
+																										
+			cout << "Enter 3rd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[6] = SCALE_RRT * value;
+			cout << "Enter 3rd Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[7] = SCALE_RRT * value;
+			cout << "Enter 3rd Obstacle -> R [m]:";			if (!(cin >> value))	throw 2;			obstacle_[8] = SCALE_RRT * (value + padding_obstacle_);
+			
+			cout << "Obstacle: ";
+			for (int i = 0; i < 9; i++) {
+				cout << obstacle_[i] << "\t";
+			}
+			cout << endl;
+			
+			cout << "=======================================" << endl;
+
+			setMode("Lock Joints");
+		}
+		catch (int e) {
+			cout << "Error: Wrong data type of Obstacle !!! (" << e << ")" << endl;
+			cout << "=======================================" << endl;
+
+			cin.clear();
+			cin.ignore(numeric_limits<streamsize>::max(), '\n');
+			setMode("ready");
+		}
+	}
+	else if (control_mode_ == "start") {
+		setMode("target1-planning");
+	}
+	else if (control_mode_ == "target1-planning") {
+		RRT_IDIM(start, target1, obstacle_);
+		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][0] << "\t" << waypoint_[i][1] << std::endl;
+		setMode("target1-execute");
+	}
+	else if (control_mode_ == "target1-execute") {
+		Vector3d target_position;
+		if (wp_n_ < wp_Num_) {
+			target_position << center(0) + waypoint_[wp_n_][0], center(1) + waypoint_[wp_n_][1], center(2);
+
+			phi_ = -getPhi(rotation_, rotation_);
+			x_error_ << target_position - x_, phi_;
+			q_desired_ = q_ + WEIGHT_SPEED * j_inverse_from_q_desired_ * x_error_;
+			//moveTaskPositionCLIK(x_from_q_desired_, target_position, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
+
+			if (isMotionCompleted_Task(target_position, rotation_target, wp_tolerance_, "target1-execute")) ++wp_n_;
+		}
+		else {
+			setMode("target2-planning");
+		}
+	}
+
+	else if (control_mode_ == "target2-planning") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p2, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
+		wp_n_ = 0;
+		RRT_IDIM(target1, target2, obstacle_);
+		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][0] << "\t" << waypoint_[i][1] << std::endl;
+		setMode("target2-execute");
+	}
+	else if (control_mode_ == "target2-execute") {
+		Vector3d target_position;
+		if (wp_n_ < wp_Num_) {
+			target_position << center(0) + waypoint_[wp_n_][0], center(1) + waypoint_[wp_n_][1], center(2);
+
+			phi_ = -getPhi(rotation_, rotation_);
+			x_error_ << target_position - x_, phi_;
+			q_desired_ = q_ + j_inverse_from_q_desired_ * x_error_;
+			//moveTaskPositionCLIK(x_from_q_desired_, target_position, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
+
+			if (isMotionCompleted_Task(target_position, rotation_target, wp_tolerance_, "target2-execute")) ++wp_n_;
+		}
+		else {
+			setMode("target3-planning");
+		}
+	}
+
+	else if (control_mode_ == "target3-planning") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p3, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
+		wp_n_ = 0;
+		RRT_IDIM(target2, target3, obstacle_);
+		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][0] << "\t" << waypoint_[i][1] << std::endl;
+		setMode("target3-execute");
+	}
+	else if (control_mode_ == "target3-execute") {
+		Vector3d target_position;
+		if (wp_n_ < wp_Num_) {
+			target_position << center(0) + waypoint_[wp_n_][0], center(1) + waypoint_[wp_n_][1], center(2);
+
+			phi_ = -getPhi(rotation_, rotation_);
+			x_error_ << target_position - x_, phi_;
+			q_desired_ = q_ + j_inverse_from_q_desired_ * x_error_;
+			//moveTaskPositionCLIK(x_from_q_desired_, target_position, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
+
+			if (isMotionCompleted_Task(target_position, rotation_target, wp_tolerance_, "target3-execute")) ++wp_n_;
+		}
+	}
+	else if (control_mode_ == "terminate") {
+		moveTaskPositionCLIK(x_from_q_desired_, target_p4, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
+		isMotionCompleted_Task(target_p4, rotation_target, wp_tolerance_, "Lock Joints");
+}
 	
+
+
+
 	else if (control_mode_ == "target1") {
 		moveTaskPositionCLIK(x_from_q_desired_, target_p1,
 							 rotation_from_q_desired_, rotation_target,
@@ -405,6 +511,102 @@ void ArmController::compute()
 			j_inverse_from_q_desired_, settling_time_);
 	}
 #endif
+
+#ifndef FINAL_PROJECT
+	else if (control_mode_ == "Change Parameters")
+	{
+		int n;
+
+		try {
+			cout << "=======================================" << endl;
+			cout << "1. Settling Time (t)" << endl;
+			cout << "2. Control Gain (Kp)" << endl;
+			cout << "3. Weight Matrix (W)" << endl;
+			cout << "4. Torque Control P-Gain (Kp_joint)" << endl;
+			cout << "5. Torque Control D-Gain (Kv_joint)" << endl;
+			cout << "6. Obstacle Potential Weight(K_obstacle)" << endl;
+			cout << "Enter number to change parameters: ";
+			if (!(cin >> n))	throw 0;
+			cout << "=======================================" << endl;
+
+			// 1.settling_time_
+			if (n == 1) {
+				cout << "Enter settling time: ";
+				if (!(cin >> settling_time_))	throw 1;
+				cout << "Success: Parameters have been changed: " << "settling_time_ = " << settling_time_ << endl;
+			}
+			// 2. Kp_
+			else if (n == 2) {
+				Vector6d Kp_vector; Kp_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+				for (int i = 0; i < 6; i++) {
+					cout << "Enter Kp(" << i << "): ";
+					if (!(cin >> Kp_vector(i)))	throw 2;
+				}
+				Kp_ = Kp_vector.asDiagonal();
+				cout << "Success: Parameters have been changed: " << "Kp = " << endl << Kp_ << endl;
+			}
+			// 3. W_
+			else if (n == 3) {
+				Vector7d W_vector;	W_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+				for (int i = 0; i < 7; i++) {
+					cout << "Enter W(" << i << "): ";
+					if (!(cin >> W_vector(i)))	throw 2;
+				}
+				W_ = W_vector.asDiagonal();
+				cout << "Success: Parameters have been changed: " << "W = " << endl << W_ << endl;
+			}
+			// 4. Kp_joint_
+			else if (n == 4) {
+
+				double Kp;
+				cout << "Enter Kp_joint: ";
+				if (!(cin >> Kp))	throw 2;
+				Kp_joint_ = Kp * EYE(7);
+
+				//Vector7d Kp_joint_vector;	Kp_joint_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+				//for (int i = 0; i < DOF; i++) {
+				//	cout << "Enter Kp_joint(" << i << "): ";
+				//	if (!(cin >> Kp_joint_vector(i)))	throw 2;
+				//}
+				//Kp_joint_ = Kp_joint_vector.asDiagonal();
+
+				cout << "Success: Parameters have been changed: " << "Kp_joint = " << endl << Kp_joint_ << endl;
+			}
+			// 5. Kv_joint_
+			else if (n == 5) {
+
+				double Kv;
+				cout << "Enter Kv_joint: ";
+				if (!(cin >> Kv))	throw 2;
+				Kv_joint_ = Kv * EYE(7);
+				//Vector7d Kv_joint_vector;	Kv_joint_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+				//for (int i = 0; i < DOF; i++) {
+				//	cout << "Enter Kv_joint(" << i << "): ";
+				//	if (!(cin >> Kv_joint_vector(i)))	throw 2;
+				//}
+				//Kv_joint_ = Kv_joint_vector.asDiagonal();
+
+				cout << "Success: Parameters have been changed: " << "Kv_joint = " << endl << Kv_joint_ << endl;
+			}
+			// 6. K_obstacle_
+			else if (n == 6) {
+				cout << "Enter K_obstacle: ";
+				if (!(cin >> K_obstacle_))	throw 2;
+				cout << "Success: Parameters have been changed: " << "K_obstacle = " << endl << K_obstacle_ << endl;
+			}
+			cout << "=======================================" << endl;
+		}
+		catch (int e) {
+			cout << "Error: Parameters is not changed !!! (" << e << ")" << endl;
+			cout << "=======================================" << endl;
+
+			cin.clear();
+			cin.ignore(numeric_limits<streamsize>::max(), '\n');
+		}
+		setMode("Lock Joints");
+	}
+#endif
+
 
 #ifdef HW2 //HW2
 	// --- HW2-0. Joint Space Control --- //
@@ -916,6 +1118,31 @@ void ArmController::compute()
 	play_time_ = tick_ / hz_;	// second
 }
 
+void ArmController::RRT_IDIM(double* start_position, double* target_position, double* obstacle) {
+	cout << "=======================================" << endl;
+	cout << "RRT Planning Start !!!" << endl;
+	cout << "=======================================" << endl;
+
+	RRT rrt_idim(start_position, target_position, rrt_threshold, obstacle, x_bounds, y_bounds, rrt_step_size, rrt_epsilon, rrt_max_iteration);
+	rrt_idim.solve();
+
+	wp_Num_ = rrt_idim.waypoint_size_;
+	//wp_Num_ = rrt_idim.sampled_size_;
+
+	for (int i = 0; i < wp_Num_; i++) {
+		waypoint_[i][0] = rrt_idim.waypoint_[i][0];		waypoint_[i][1] = rrt_idim.waypoint_[i][1];
+		//waypoint_[i][0] = rrt_idim.sampled_[i][0];		waypoint_[i][1] = rrt_idim.sampled_[i][1];
+		
+	}
+	cout << "RRT Planning Completed !!!" << endl;
+	cout << "=======================================" << endl;
+}
+
+void ArmController::calcSettlingTime(Eigen::Vector3d waypoint) {
+	double distance;	distance = (waypoint.block<2, 1>(0, 0) - x_.block<2, 1>(0, 0)).norm();
+	cout << distance << endl;
+}
+
 void ArmController::isMotionCompleted(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance) {
 	x_error_to_target_.block<3, 1>(0, 0) = position_target - x_;
 	x_error_to_target_.block<3, 1>(3, 0) = getPhi(rotation_, rotation_target);
@@ -925,7 +1152,7 @@ void ArmController::isMotionCompleted(Eigen::Vector3d position_target, Eigen::Ma
 bool ArmController::isMotionCompleted_Task(Eigen::Vector3d position_target, Eigen::Matrix3d rotation_target, double tolerance, string state) {
 	x_error_to_target_.block<3, 1>(0, 0) = position_target - x_;
 	x_error_to_target_.block<3, 1>(3, 0) = getPhi(rotation_, rotation_target);
-	if ((x_error_to_target_).norm() < tolerance) {
+	if ((x_error_to_target_.block<3, 1>(0, 0)).norm() < tolerance) {
 		setMode(state);
 		return 1;
 	}
@@ -978,8 +1205,6 @@ void ArmController::moveTaskPositionCLIK(const Vector3d &position_now, const Vec
 
 	j_inverse_from_q_desired_ = W_.inverse() * j_from_q_desired_.transpose() * ((j_from_q_desired_ * W_.inverse() * j_from_q_desired_.transpose()).inverse());
 	q_desired_ = q_ + j_inverse_from_q_desired_ * (x_dot_cubic_ + Kp_ * x_error_) / hz_;
-
-	isMotionCompleted(position_target, rotation_target, ERROR_TOLERANCE);
 }
 
 void ArmController::moveTaskPosition(const Vector3d &position_now, const Vector3d &position_target,
@@ -1097,12 +1322,8 @@ void ArmController::moveTaskPositionbyTorqueAvoidObstacle(const Vector3d &x_targ
 	isMotionCompleted_Task(x_target, rotation_target, ERROR_TOLERANCE, "Lock Joints");
 }
 
-
-
-void ArmController::printState()
-{
-	// TODO: Modify this method to debug your code
-
+#ifdef FINAL_PROJECT
+void ArmController::printState() {
 	static int DBG_CNT = 0;
 	if (DBG_CNT++ > hz_ / 2.)
 	{
@@ -1111,24 +1332,56 @@ void ArmController::printState()
 		cout << "-------------------------------------------------------" << endl;
 		cout << "--------------    < Parameter lists >    --------------" << endl;
 		cout << "-------------------------------------------------------" << endl;
-		cout << "1. settling_time_ : "	<< std::fixed << std::setprecision(3) << settling_time_ << endl;
-		cout << "2. Kp_ : "				<< std::fixed << std::setprecision(3) << Kp_.diagonal().transpose() << endl;
-		cout << "3. W_  : "				<< std::fixed << std::setprecision(3) << W_.diagonal().transpose() << endl;
-		cout << "4. Kp_joint_  : "		<< std::fixed << std::setprecision(3) << Kp_joint_.diagonal().transpose() << endl;
-		cout << "5. Kv_joint_  : "		<< std::fixed << std::setprecision(3) << Kv_joint_.diagonal().transpose() << endl;
-		cout << "6. K_obstacle_  : "	<< std::fixed << std::setprecision(3) << K_obstacle_ << endl;
+		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "], radius = " << obstacle_[2] << endl;
+		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "], radius = " << obstacle_[5] << endl;
+		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "], radius = " << obstacle_[8] << endl;
 		cout << "-------------------------------------------------------" << endl;
-		cout << "play_time_	: "			<< std::fixed << std::setprecision(3) << play_time_ << endl;
-		cout << "control_mode_	: "		<< std::fixed << control_mode_ << endl;
-		cout << "x_		: "				<< std::fixed << std::setprecision(3) << x_.transpose() << endl;
-		cout << "x1_		: "			<< std::fixed << std::setprecision(3) << x1_.transpose() << endl;
-		cout << "x2_		: "			<< std::fixed << std::setprecision(3) << x2_.transpose() << endl;
-		cout << "h2_		: "			<< std::fixed << std::setprecision(3) << h2_ << endl;
-		cout << "r_		: "				<< endl << std::fixed << std::setprecision(3) << rotation_.transpose() << endl;
-		cout << "q_		: "				<< std::fixed << std::setprecision(3) << RAD2DEG*q_.transpose() << endl;
+		cout << "1. Settling time [sec] : " << std::fixed << std::setprecision(3) << wp_settling_time_ << endl;
+		cout << "2. Waypoint tolerance [m] : " << std::fixed << std::setprecision(3) << wp_tolerance_ << endl;
+		cout << "3. Speed gain (Kp) : " << std::fixed << std::setprecision(3) << weight_speed_ << endl;
+		cout << "4. Obstacle padding [m] : " << std::fixed << std::setprecision(3) << padding_obstacle_ << endl;
+		cout << "-------------------------------------------------------" << endl;
+		cout << "play_time_	: " << std::fixed << std::setprecision(3) << play_time_ << endl;
+		cout << "control_mode_	: " << std::fixed << control_mode_ << endl;
+		cout << "q_		: " << std::fixed << std::setprecision(3) << RAD2DEG * q_.transpose() << endl;
+		cout << "x_		: " << std::fixed << std::setprecision(3) << x_.transpose() << endl;
+		cout << "r_		: " << endl << std::fixed << std::setprecision(3) << rotation_.transpose() << endl;
+
+
+		cout << endl;
+	}
+}
+#endif
+
+
+#ifndef FINAL_PROJECT
+void ArmController::printState() {
+	static int DBG_CNT = 0;
+	if (DBG_CNT++ > hz_ / 2.)
+	{
+		DBG_CNT = 0;
+		cout << endl;
+		cout << "-------------------------------------------------------" << endl;
+		cout << "--------------    < Parameter lists >    --------------" << endl;
+		cout << "-------------------------------------------------------" << endl;
+		cout << "1. settling_time_ : " << std::fixed << std::setprecision(3) << settling_time_ << endl;
+		cout << "2. Kp_ : " << std::fixed << std::setprecision(3) << Kp_.diagonal().transpose() << endl;
+		cout << "3. W_  : " << std::fixed << std::setprecision(3) << W_.diagonal().transpose() << endl;
+		cout << "4. Kp_joint_  : " << std::fixed << std::setprecision(3) << Kp_joint_.diagonal().transpose() << endl;
+		cout << "5. Kv_joint_  : " << std::fixed << std::setprecision(3) << Kv_joint_.diagonal().transpose() << endl;
+		cout << "6. K_obstacle_  : " << std::fixed << std::setprecision(3) << K_obstacle_ << endl;
+		cout << "-------------------------------------------------------" << endl;
+		cout << "play_time_	: " << std::fixed << std::setprecision(3) << play_time_ << endl;
+		cout << "control_mode_	: " << std::fixed << control_mode_ << endl;
+		cout << "x_		: " << std::fixed << std::setprecision(3) << x_.transpose() << endl;
+		cout << "x1_		: " << std::fixed << std::setprecision(3) << x1_.transpose() << endl;
+		cout << "x2_		: " << std::fixed << std::setprecision(3) << x2_.transpose() << endl;
+		cout << "h2_		: " << std::fixed << std::setprecision(3) << h2_ << endl;
+		cout << "r_		: " << endl << std::fixed << std::setprecision(3) << rotation_.transpose() << endl;
+		cout << "q_		: " << std::fixed << std::setprecision(3) << RAD2DEG * q_.transpose() << endl;
 		//cout << "q_desired_	: "		<< std::fixed << std::setprecision(3) << q_desired_.transpose() << endl;
 		//cout << "deltq q	: "			<< std::fixed << std::setprecision(3) << (q_desired_ - q_).transpose() << endl;
-		cout << "torque_		: "		<< std::fixed << std::setprecision(3) << torque_.transpose() << endl;
+		cout << "torque_		: " << std::fixed << std::setprecision(3) << torque_.transpose() << endl;
 		//cout << "torque_desired_ : "	<< std::fixed << std::setprecision(3) << torque_desired_.transpose() << endl;
 		//cout << "j_		: "			<< endl << std::fixed << std::setprecision(3) << j_ << endl;
 		//cout << "j_inverse_		: " << endl << std::fixed << std::setprecision(3) << j_inverse_ << endl;
@@ -1136,7 +1389,7 @@ void ArmController::printState()
 		cout << endl;
 	}
 }
-
+#endif
 
 
 // Controller Core Methods ----------------------------
@@ -1180,6 +1433,20 @@ void ArmController::initDimension()
 	Kv_task_ =  40.0 * EYE(3);
 
 	K_obstacle_ = 0.1;
+
+	/*--- FINAL PROJECT ---*/
+	wp_tolerance_	  = WAYPOINT_TOLERANCE;
+	wp_settling_time_ = WAYPOINT_SETTLING_TIME;
+	padding_obstacle_ = PADDING_OBSTACLE;
+	weight_speed_ = WEIGHT_SPEED;
+
+	obstacle_[0] = obstacle_1[0];		obstacle_[1] = obstacle_1[1];		obstacle_[2] = obstacle_1[2] + padding_obstacle_;
+	obstacle_[3] = obstacle_2[0];		obstacle_[4] = obstacle_2[1];		obstacle_[5] = obstacle_2[2] + padding_obstacle_;
+	obstacle_[6] = obstacle_3[0];		obstacle_[7] = obstacle_3[1];		obstacle_[8] = obstacle_3[2] + padding_obstacle_;
+
+	//obstacle_[0] = 0.60 - center[0];	obstacle_[1] =  0.12;	obstacle_[2] = 0.035 + padding_obstacle_;
+	//obstacle_[3] = 0.51 - center[0];	obstacle_[4] =  0.00; 	obstacle_[5] = 0.050 + padding_obstacle_;
+	//obstacle_[6] = 0.62 - center[0];	obstacle_[7] = -0.08;	obstacle_[8] = 0.025 + padding_obstacle_;
 }
 
 void ArmController::initModel()

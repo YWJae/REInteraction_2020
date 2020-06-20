@@ -142,12 +142,19 @@
     <ClCompile Include="..\3rdparty\vrep\remoteApi\extApi.c" />
     <ClCompile Include="..\3rdparty\vrep\remoteApi\extApiPlatform.c" />
     <ClCompile Include="src\controller.cpp" />
-    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\main.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="src\RRT.cpp" />
     <ClCompile Include="src\vrep_bridge.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\controller.h" />
     <ClInclude Include="include\math_type_define.h" />
+    <ClInclude Include="include\RRT.h" />
     <ClInclude Include="include\vrep_bridge.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

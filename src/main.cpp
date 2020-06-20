@@ -56,6 +56,13 @@ int main(){
 			case '0':
 				ac.setMode("init");
 				break;
+			case 'r':
+				ac.setMode("ready");
+				break;
+			case 's':
+				ac.setMode("start");
+				vb.getProjectStartTime();
+				break;
 			case '1':
 				ac.setMode("target1");
 				break;
@@ -67,12 +74,6 @@ int main(){
 				break;
 			case '4':
 				ac.setMode("target4");
-				break;
-			case 's':
-				ac.setMode("start");
-				// 1. RRT Planner	("planning")
-				// 2. Robot control ("control")
-				vb.getProjectStartTime();
 				break;
 #endif
 

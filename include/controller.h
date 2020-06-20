@@ -20,6 +20,9 @@
 #include <memory>
 #include <fstream>
 #include "math_type_define.h"
+#include "RRT.h"
+
+#define WAYPOINT_NUM_MAX 1000
 
 #define EYE(X) Matrix<double, X, X>::Identity()
 
@@ -29,6 +32,19 @@ using namespace Eigen;
 
 class ArmController
 {
+	/*---  FINAL PROJECT  ---*/
+	double obstacle_[9];
+	double waypoint_[WAYPOINT_NUM_MAX][2];
+	//std::vector< std::array<double, 2> > waypoint_;
+	int wp_n_;   // Final project -> waypoint n번째
+	int wp_Num_; // waypoint 개수
+	double wp_tolerance_;
+	double wp_settling_time_;
+	double padding_obstacle_;
+	double weight_speed_;
+
+
+
 	size_t dof_;
 
 	// Initial state
@@ -229,6 +245,10 @@ public:
 	void moveTaskPositionbyTorquePD(const Vector3d &x_target, const Matrix3d &rotation_target, double settling_time);
 	void moveTaskPositionbyTorqueVelSat(const Vector3d &x_target, const Matrix3d &rotation_target, double x_dot_max, double settling_time);
 	void moveTaskPositionbyTorqueAvoidObstacle(const Vector3d &x_target, const Matrix3d &rotation_target, double x_dot_max, const Vector3d &x_obstacle, double d0, double settling_time);
+
+
+	void calcSettlingTime(Eigen::Vector3d waypoint);
+	void RRT_IDIM(double* start_position, double* target_position, double* obstacle);
 };
 
 #endif
