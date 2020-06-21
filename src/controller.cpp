@@ -29,9 +29,9 @@ double target3[2]  = {-0.08, -0.18 };  // 경기장 position 4														 //
 //double obstacle_1[3] = { 0.620 - center[0], -0.080, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
 //double obstacle_2[3] = { 0.600 - center[0],  0.120, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
 //double obstacle_3[3] = { 0.510 - center[0],  0.000, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
-double obstacle_1[3] = { 0.570 - center[0], -0.105, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_1[3] = { 0.645 - center[0], -0.130, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
 double obstacle_2[3] = { 0.575 - center[0],  0.170, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
-double obstacle_3[3] = { 0.635 - center[0],  0.025, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_3[3] = { 0.535 - center[0], -0.050, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
 #define WAYPOINT_TOLERANCE 0.005   // if) distance < tolerence  ->  target = next waypoint						 //
 #define WAYPOINT_SETTLING_TIME 0.5 // 현재 사용 X (제어기 다른 것 사용 중)										 //
 #define PADDING_OBSTACLE 0.020	   // 장애물 지름 padding														 //
@@ -389,17 +389,17 @@ void ArmController::compute()
 			cout << "Enter Obstacle(1)  Data: [X, Y, Diameter]: ";
 			cout << "=======================================" << endl;
 
-			cout << "Enter 1st Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[0] = SCALE_RRT * value - center[0];
-			cout << "Enter 1st Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[1] = SCALE_RRT * value;
-			cout << "Enter 1st Obstacle -> d [m]:";			if (!(cin >> value))	throw 2;			obstacle_[2] = SCALE_RRT * D2R * value;
+			cout << "Enter 1st Obstacle -> X [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[0] = SCALE_RRT * value - center[0];
+			cout << "Enter 1st Obstacle -> Y [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[1] = SCALE_RRT * value;
+			cout << "Enter 1st Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[2] = SCALE_RRT * D2R * value;
 																										
-			cout << "Enter 2nd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[3] = SCALE_RRT * value - center[0];
-			cout << "Enter 2nd Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[4] = SCALE_RRT * value;
-			cout << "Enter 2nd Obstacle -> d [m]:";			if (!(cin >> value))	throw 2;			obstacle_[5] = SCALE_RRT * D2R * value;
+			cout << "Enter 2nd Obstacle -> X [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[3] = SCALE_RRT * value - center[0];
+			cout << "Enter 2nd Obstacle -> Y [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[4] = SCALE_RRT * value;
+			cout << "Enter 2nd Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[5] = SCALE_RRT * D2R * value;
 																										
-			cout << "Enter 3rd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[6] = SCALE_RRT * value - center[0];
-			cout << "Enter 3rd Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[7] = SCALE_RRT * value;
-			cout << "Enter 3rd Obstacle -> d [m]:";			if (!(cin >> value))	throw 2;			obstacle_[8] = SCALE_RRT * D2R * value;
+			cout << "Enter 3rd Obstacle -> X [m](in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[6] = SCALE_RRT * value - center[0];
+			cout << "Enter 3rd Obstacle -> Y [m](in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[7] = SCALE_RRT * value;
+			cout << "Enter 3rd Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[8] = SCALE_RRT * D2R * value;
 			
 			cout << "Obstacle: ";
 			for (int i = 0; i < 9; i++) {
@@ -1129,7 +1129,6 @@ void ArmController::RRT_IDIM(double* start_position, double* target_position, do
 	cout << "=======================================" << endl;
 	cout << "RRT Planning Start !!!" << endl;
 	cout << "=======================================" << endl;
-
 	RRT rrt_idim(start_position, target_position, rrt_threshold, obstacle, x_bounds, y_bounds, rrt_step_size, rrt_epsilon, rrt_max_iteration);
 	rrt_idim.solve();
 
@@ -1339,9 +1338,9 @@ void ArmController::printState() {
 		cout << "-------------------------------------------------------" << endl;
 		cout << "--------------    < Parameter lists >    --------------" << endl;
 		cout << "-------------------------------------------------------" << endl;
+		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "],	radius (with padding) = " << obstacle_[2] << endl;
 		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "],	radius (with padding) = " << obstacle_[5] << endl;
 		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "],	radius (with padding) = " << obstacle_[8] << endl;
-		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "],	radius (with padding) = " << obstacle_[2] << endl;
 		cout << "-------------------------------------------------------" << endl;
 		cout << "1. Settling time [sec] : " << std::fixed << std::setprecision(3) << wp_settling_time_ << endl;
 		cout << "2. Waypoint tolerance [m] : " << std::fixed << std::setprecision(3) << wp_tolerance_ << endl;

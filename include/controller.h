@@ -35,7 +35,6 @@ class ArmController
 	/*---  FINAL PROJECT  ---*/
 	double obstacle_[9];
 	double waypoint_[WAYPOINT_NUM_MAX][2];
-	//std::vector< std::array<double, 2> > waypoint_;
 	int wp_n_;   // Final project -> waypoint n번째
 	int wp_Num_; // waypoint 개수
 	double wp_tolerance_;
