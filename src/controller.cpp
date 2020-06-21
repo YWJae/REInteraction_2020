@@ -26,17 +26,20 @@ double target3[2]  = {-0.08, -0.18 };  // 경기장 position 4														 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*---											 FINAL PROJECT (tuning value)								  ---*/
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-double obstacle_1[3] = { 0.620 - center[0], -0.080, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
-double obstacle_2[3] = { 0.600 - center[0],  0.120, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
-double obstacle_3[3] = { 0.510 - center[0],  0.000, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
+//double obstacle_1[3] = { 0.620 - center[0], -0.080, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
+//double obstacle_2[3] = { 0.600 - center[0],  0.120, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
+//double obstacle_3[3] = { 0.510 - center[0],  0.000, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_1[3] = { 0.570 - center[0], -0.105, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_2[3] = { 0.575 - center[0],  0.170, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_3[3] = { 0.635 - center[0],  0.025, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
 #define WAYPOINT_TOLERANCE 0.005   // if) distance < tolerence  ->  target = next waypoint						 //
 #define WAYPOINT_SETTLING_TIME 0.5 // 현재 사용 X (제어기 다른 것 사용 중)										 //
-#define PADDING_OBSTACLE 0.015	   // 장애물 지름 padding														 //
+#define PADDING_OBSTACLE 0.020	   // 장애물 지름 padding														 //
 #define WEIGHT_SPEED 0.5		   //  현재 사용 X (제어기 다른 것 사용 중)										 //
 #define SCALE_RRT 1.0			   // RRT scaling factor														 //
 																												 //
 double rrt_threshold = 0.001;																					 //
-double rrt_step_size = 0.001;																					 //
+double rrt_step_size = 0.002;																					 //
 int rrt_epsilon = 50;																							 //
 int rrt_max_iteration = 1000000;																				 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -301,6 +304,7 @@ void ArmController::compute()
 			cout << "2. Waypoint tolerance [m]" << endl;
 			cout << "3. Speed gain (Kp)" << endl;
 			cout << "4. Obstacle padding [m]" << endl;
+			cout << "5. RRT waypoint step size [m] (~ speed)" << endl;
 			cout << "Enter number to change parameters: ";
 			if (!(cin >> n))	throw 0;
 			cout << "=======================================" << endl;
@@ -328,6 +332,12 @@ void ArmController::compute()
 				cout << "Enter Obstacle padding [m]: ";
 				if (!(cin >> padding_obstacle_))	throw 1;
 				cout << "Success: Parameters have been changed: " << "padding_obstacle_ = " << padding_obstacle_ << endl;
+			}
+			// 5. RRT step size: rrt_step_size
+			else if (n == 5) {
+				cout << "Enter RRT waypoint step size [m] (~ speed): ";
+				if (!(cin >> rrt_step_size))	throw 1;
+				cout << "Success: Parameters have been changed: " << "rrt_step_size = " << rrt_step_size << endl;
 			}
 
 			cout << "=======================================" << endl;
@@ -1329,14 +1339,15 @@ void ArmController::printState() {
 		cout << "-------------------------------------------------------" << endl;
 		cout << "--------------    < Parameter lists >    --------------" << endl;
 		cout << "-------------------------------------------------------" << endl;
-		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "],	diameter = " << obstacle_[2] << endl;
-		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "],	diameter = " << obstacle_[5] << endl;
-		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "],	diameter = " << obstacle_[8] << endl;
+		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "],	radius (with padding) = " << obstacle_[5] << endl;
+		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "],	radius (with padding) = " << obstacle_[8] << endl;
+		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "],	radius (with padding) = " << obstacle_[2] << endl;
 		cout << "-------------------------------------------------------" << endl;
 		cout << "1. Settling time [sec] : " << std::fixed << std::setprecision(3) << wp_settling_time_ << endl;
 		cout << "2. Waypoint tolerance [m] : " << std::fixed << std::setprecision(3) << wp_tolerance_ << endl;
 		cout << "3. Speed gain (Kp) : " << std::fixed << std::setprecision(3) << weight_speed_ << endl;
 		cout << "4. Obstacle padding [m] : " << std::fixed << std::setprecision(3) << padding_obstacle_ << endl;
+		cout << "5. RRT waypoint step size [m] (~ speed) : " << std::fixed << std::setprecision(3) << rrt_step_size << endl; 
 		cout << "-------------------------------------------------------" << endl;
 		cout << "play_time_	: " << std::fixed << std::setprecision(3) << play_time_ << endl;
 		cout << "control_mode_	: " << std::fixed << control_mode_ << endl;

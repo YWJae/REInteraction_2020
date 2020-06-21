@@ -1,14 +1,8 @@
-﻿  extApi.c
-  extApiPlatform.c
-  Adding library: Winmm.lib
-  Adding library: Ws2_32.lib
-  controller.cpp
-  RRT.cpp
-  vrep_bridge.cpp
-  main.cpp
-     C:\Users\WonJae Yun\yun_ws\visual studio 2017\panda_control_vrep_template\x64\Release\panda_control_vrep.lib 라이브러리 및 C:\Users\WonJae Yun\yun_ws\visual studio 2017\panda_control_vrep_template\x64\Release\panda_control_vrep.exp 개체를 생성하고 있습니다.
+﻿  controller.cpp
+     D:\yun_ws\visual studio\panda_control_vrep_template\x64\Release\panda_control_vrep.lib 라이브러리 및 D:\yun_ws\visual studio\panda_control_vrep_template\x64\Release\panda_control_vrep.exp 개체를 생성하고 있습니다.
   코드를 생성하고 있습니다.
-c:\users\wonjae yun\yun_ws\visual studio 2017\panda_control_vrep_template\panda_control_vrep\src\rrt.cpp(185): warning C4715: 'RRT::getNodefromID': 모든 제어 경로에서 값을 반환하지는 않습니다.
-  All 14447 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  11 of 14455 functions (<0.1%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    69 functions had inline decision re-evaluated but remain unchanged
   코드를 생성했습니다.
-  panda_control_vrep.vcxproj -> C:\Users\WonJae Yun\yun_ws\visual studio 2017\panda_control_vrep_template\x64\Release\panda_control_vrep.exe
+  panda_control_vrep.vcxproj -> D:\yun_ws\visual studio\panda_control_vrep_template\x64\Release\panda_control_vrep.exe
