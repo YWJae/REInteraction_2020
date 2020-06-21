@@ -7,36 +7,39 @@
 #define ERROR_TOLERANCE 0.001   // [m]
 #define D2R 0.5
 
-/*--- FINAL PROJECT (fixed value) ---*/
-double center[2]   = {  0.580, 0.150 };
-double x_bounds[2] = { -0.100, 0.100 }; // 경기장 X bound
-double y_bounds[2] = { -0.200, 0.200 }; // 경기장 Y bound
-
-double start[2]	   = { 0.08, -0.18 };  // position 1`
-double target1[2]  = {-0.08,  0.18 };  // position 2
-double target2[2]  = { 0.08,  0.18 };  // position 3
-double target3[2]  = {-0.08, -0.18 };  // position 4
-
-/*--- FINAL PROJECT (tuning value) ---*/
-double obstacle_1[3] = { 0.550 - center[0],  0.145, 0.07 * D2R };
-double obstacle_2[3] = { 0.635 - center[0],  0.075, 0.10 * D2R };
-double obstacle_3[3] = { 0.545 - center[0], -0.105, 0.05 * D2R };
-#define WAYPOINT_TOLERANCE 0.005 // [m]
-#define WAYPOINT_SETTLING_TIME 0.5 // [sec]
-#define PADDING_OBSTACLE 0.01   // [m]
-#define WEIGHT_SPEED 0.5 // 현재위치 - waypoint 거리 비례하여 settling_time_으로 속도 조절 -> 여기의 weight
-#define SCALE_RRT 1.0 // RRT scaling factor
-
-double rrt_threshold = 0.001;
-double rrt_step_size = 0.001;
-int rrt_epsilon = 50;
-int rrt_max_iteration = 1000000;
-
-
-
 using namespace DyrosMath;
 ofstream logfile;
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*---											FINAL PROJECT (fixed value)									  ---*/
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+double center[2]   = {  0.580, 0.150 };	// 경기장 중심 위치 (로봇 base 기준)									 //
+double y_bounds[2] = { -0.200, 0.200 }; // 경기장 Y bound														 //
+double x_bounds[2] = { -0.100, 0.100 }; // 경기장 X bound														 //
+																												 //
+double start[2]	   = { 0.08, -0.18 };  // 경기장 position 1														 //
+double target1[2]  = {-0.08,  0.18 };  // 경기장 position 2														 //
+double target2[2]  = { 0.08,  0.18 };  // 경기장 position 3														 //
+double target3[2]  = {-0.08, -0.18 };  // 경기장 position 4														 //
+																												 //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*---											 FINAL PROJECT (tuning value)								  ---*/
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+double obstacle_1[3] = { 0.620 - center[0], -0.080, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_2[3] = { 0.600 - center[0],  0.120, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_3[3] = { 0.510 - center[0],  0.000, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
+#define WAYPOINT_TOLERANCE 0.005   // if) distance < tolerence  ->  target = next waypoint						 //
+#define WAYPOINT_SETTLING_TIME 0.5 // 현재 사용 X (제어기 다른 것 사용 중)										 //
+#define PADDING_OBSTACLE 0.015	   // 장애물 지름 padding														 //
+#define WEIGHT_SPEED 0.5		   //  현재 사용 X (제어기 다른 것 사용 중)										 //
+#define SCALE_RRT 1.0			   // RRT scaling factor														 //
+																												 //
+double rrt_threshold = 0.001;																					 //
+double rrt_step_size = 0.001;																					 //
+int rrt_epsilon = 50;																							 //
+int rrt_max_iteration = 1000000;																				 //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ArmController::logData_task(Vector3d x_target, Matrix3d rotation_target) {
 	Vector3d phi_desired;	phi_desired = -getPhi(EYE(3), rotation_target);
@@ -163,8 +166,6 @@ void ArmController::compute()
 
 	Vector3d init_wp1;					init_wp1 << center(0),    center(1),    center(2) + dZ;
 	Vector3d init_wp2;					init_wp2 << target_p1(0), target_p1(1), target_p1(2) + dZ;
-
-
 #endif
 
 #ifdef HW2
@@ -236,9 +237,6 @@ void ArmController::compute()
 
 	if (is_mode_changed_)
 	{
-		/*---  FINAL PROJECT  ---*/
-
-
 		logfile.close();
 		logfile.open(control_mode_ + ".txt");
 		is_mode_changed_ = false;
@@ -257,7 +255,6 @@ void ArmController::compute()
 		x_dot_init_ = x_dot_.block<3, 1>(0, 0); // 추가 (윤원재)
 		x_cubic_old_ = x_;
 		rotation_init_ = rotation_;
-
 	}
 
 	if      (control_mode_ == "joint_ctrl_home")
@@ -287,12 +284,12 @@ void ArmController::compute()
 		moveJointPositionbyTorque(q_target, settling_time_);
 	}
 
+
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	////* -----                       HOMEWORK   2020-26181   윤원재                      ----- *////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-	
 #ifdef FINAL_PROJECT
 	else if (control_mode_ == "Change Parameters")
 	{
@@ -379,20 +376,20 @@ void ArmController::compute()
 		try {
 			double value;
 
-			cout << "Enter Obstacle(1)  Data: [X, Y, Radius]: ";
+			cout << "Enter Obstacle(1)  Data: [X, Y, Diameter]: ";
 			cout << "=======================================" << endl;
 
-			cout << "Enter 1st Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[0] = SCALE_RRT * value;
+			cout << "Enter 1st Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[0] = SCALE_RRT * value - center[0];
 			cout << "Enter 1st Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[1] = SCALE_RRT * value;
-			cout << "Enter 1st Obstacle -> R [m]:";			if (!(cin >> value))	throw 2;			obstacle_[2] = SCALE_RRT * (value + padding_obstacle_);
+			cout << "Enter 1st Obstacle -> d [m]:";			if (!(cin >> value))	throw 2;			obstacle_[2] = SCALE_RRT * D2R * value;
 																										
-			cout << "Enter 2nd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[3] = SCALE_RRT * value;
+			cout << "Enter 2nd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[3] = SCALE_RRT * value - center[0];
 			cout << "Enter 2nd Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[4] = SCALE_RRT * value;
-			cout << "Enter 2nd Obstacle -> R [m]:";			if (!(cin >> value))	throw 2;			obstacle_[5] = SCALE_RRT * (value + padding_obstacle_);
+			cout << "Enter 2nd Obstacle -> d [m]:";			if (!(cin >> value))	throw 2;			obstacle_[5] = SCALE_RRT * D2R * value;
 																										
-			cout << "Enter 3rd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[6] = SCALE_RRT * value;
+			cout << "Enter 3rd Obstacle -> X [m]:";			if (!(cin >> value))	throw 2;			obstacle_[6] = SCALE_RRT * value - center[0];
 			cout << "Enter 3rd Obstacle -> Y [m]:";			if (!(cin >> value))	throw 2;			obstacle_[7] = SCALE_RRT * value;
-			cout << "Enter 3rd Obstacle -> R [m]:";			if (!(cin >> value))	throw 2;			obstacle_[8] = SCALE_RRT * (value + padding_obstacle_);
+			cout << "Enter 3rd Obstacle -> d [m]:";			if (!(cin >> value))	throw 2;			obstacle_[8] = SCALE_RRT * D2R * value;
 			
 			cout << "Obstacle: ";
 			for (int i = 0; i < 9; i++) {
@@ -1332,9 +1329,9 @@ void ArmController::printState() {
 		cout << "-------------------------------------------------------" << endl;
 		cout << "--------------    < Parameter lists >    --------------" << endl;
 		cout << "-------------------------------------------------------" << endl;
-		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "], radius = " << obstacle_[2] << endl;
-		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "], radius = " << obstacle_[5] << endl;
-		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "], radius = " << obstacle_[8] << endl;
+		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "],	diameter = " << obstacle_[2] << endl;
+		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "],	diameter = " << obstacle_[5] << endl;
+		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "],	diameter = " << obstacle_[8] << endl;
 		cout << "-------------------------------------------------------" << endl;
 		cout << "1. Settling time [sec] : " << std::fixed << std::setprecision(3) << wp_settling_time_ << endl;
 		cout << "2. Waypoint tolerance [m] : " << std::fixed << std::setprecision(3) << wp_tolerance_ << endl;
@@ -1400,6 +1397,7 @@ void ArmController::setMode(const std::string & mode)
 	control_mode_ = mode;
 	cout << "Current mode (changed) : " << mode << endl;
 }
+
 void ArmController::initDimension()
 {
 	dof_ = DOF;
@@ -1443,12 +1441,7 @@ void ArmController::initDimension()
 	obstacle_[0] = obstacle_1[0];		obstacle_[1] = obstacle_1[1];		obstacle_[2] = obstacle_1[2] + padding_obstacle_;
 	obstacle_[3] = obstacle_2[0];		obstacle_[4] = obstacle_2[1];		obstacle_[5] = obstacle_2[2] + padding_obstacle_;
 	obstacle_[6] = obstacle_3[0];		obstacle_[7] = obstacle_3[1];		obstacle_[8] = obstacle_3[2] + padding_obstacle_;
-
-	//obstacle_[0] = 0.60 - center[0];	obstacle_[1] =  0.12;	obstacle_[2] = 0.035 + padding_obstacle_;
-	//obstacle_[3] = 0.51 - center[0];	obstacle_[4] =  0.00; 	obstacle_[5] = 0.050 + padding_obstacle_;
-	//obstacle_[6] = 0.62 - center[0];	obstacle_[7] = -0.08;	obstacle_[8] = 0.025 + padding_obstacle_;
 }
-
 void ArmController::initModel()
 {
 	model_ = make_shared<Model>();

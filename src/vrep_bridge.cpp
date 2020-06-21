@@ -162,5 +162,5 @@ void VRepBridge::getProjectFinishTime()
 {
 	project_finish_time_ = extApi_getTimeInMs() / 1000.0;
 	cout << "Project Finish: " << project_finish_time_ << "second" << endl;
-	cout << "Project Duration: " << project_finish_time_ - project_start_time_ << "second" << endl;
+	
 }

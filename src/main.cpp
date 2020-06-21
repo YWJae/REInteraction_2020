@@ -6,6 +6,8 @@
 
 #include "controller.h"
 
+bool isProjectFinished(true);
+
 using namespace std;
 
 int main(){
@@ -62,6 +64,7 @@ int main(){
 			case 's':
 				ac.setMode("start");
 				vb.getProjectStartTime();
+				isProjectFinished = false;
 				break;
 			case '1':
 				ac.setMode("target1");
@@ -198,7 +201,13 @@ int main(){
 			vb.write();
 			vb.simLoop();
 #ifdef FINAL_PROJECT
-			if (ac.projectFinish())	  vb.getProjectFinishTime();
+			if (ac.projectFinish()) {
+				if (!isProjectFinished) {
+					isProjectFinished = true;
+					vb.getProjectFinishTime();
+				}
+			cout << "Project Duration: " << vb.project_finish_time_ - vb.project_start_time_ << "second" << endl;
+			}
 		}
 #endif
 	}

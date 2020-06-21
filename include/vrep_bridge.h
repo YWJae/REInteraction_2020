@@ -37,13 +37,15 @@ public:
 
 	const size_t getTick() { return tick_; }
 
+	double project_start_time_;
+	double project_finish_time_;
+
 private:
 	Eigen::Matrix<double, DOF, 1> current_q_;
 	Eigen::Matrix<double, DOF, 1> current_q_dot_;
 	Eigen::Matrix<double, DOF, 1> desired_q_;
 	Eigen::Matrix<double, DOF, 1> desired_torque_;
-	double project_start_time_;
-	double project_finish_time_;
+
 
 
 	simxInt clientID_;
