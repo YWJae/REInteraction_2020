@@ -14,35 +14,36 @@ std::ofstream logfile2;
 
 
 RRT::RRT(double* start, double* goal, double thres, double* obstacle, double* x_bounds, double* y_bounds, double step_size, double eps, double iter){
-    START_X = start[0];
-    START_Y = start[1];
+    start_position_x_ = start[0];
+    start_position_y_ = start[1];
 	
 	
-	GOAL_X = goal[0];
-    GOAL_Y = goal[1];
+	target_position_x_ = goal[0];
+    target_position_y_ = goal[1];
 
-    THRESHOLD = thres;
+    rrt_threshold_ = thres;
 
+	obstacle_1_[0] = obstacle[0];
+	obstacle_1_[1] = obstacle[1];
+	obstacle_1_[2] = obstacle[2];
 
-	OBSTACLE_X1 = obstacle[0];//[0];
-	OBSTACLE_Y1 = obstacle[1];//[1];
-	OBSTACLE_R1 = obstacle[2];//[2];
-	OBSTACLE_X2 = obstacle[3];//[0];
-	OBSTACLE_Y2 = obstacle[4];//[1];
-	OBSTACLE_R2 = obstacle[5];//[2];
-	OBSTACLE_X3 = obstacle[6];//[0];
-	OBSTACLE_Y3 = obstacle[7];//[1];
-	OBSTACLE_R3 = obstacle[8];//[2];
+	obstacle_2_[0] = obstacle[3];
+	obstacle_2_[1] = obstacle[4];
+	obstacle_2_[2] = obstacle[5];
 
-    X_MIN = x_bounds[0];
-    X_MAX = x_bounds[1];
+	obstacle_3_[0] = obstacle[6];
+	obstacle_3_[1] = obstacle[7];
+	obstacle_3_[2] = obstacle[8];
 
-    Y_MIN = y_bounds[0];
-    Y_MAX = y_bounds[1];
+    bound_x_min_ = x_bounds[0];
+    bound_x_max_ = x_bounds[1];
 
-    STEP_SIZE = step_size;
-    EPSILON = eps;
-    MAX_ITER = iter;
+    bound_y_min_ = y_bounds[0];
+    bound_y_max_ = y_bounds[1];
+
+    rrt_step_size_ = step_size;
+    rrt_epsilon_ = eps;
+    rrt_max_iteration_ = iter;
 };
 
 Point RRT::newPoint(std::uniform_real_distribution<double> x_unif, std::uniform_real_distribution<double> y_unif, std::default_random_engine& re) {
@@ -96,66 +97,47 @@ Node RRT::takeStep(Point rand_point, Node nearest_node, double step_size, int& u
 
 void RRT::generateObstacles(std::vector<Obstacle>& obstacles) {
 	
-	Obstacle obj;
+	Obstacle obj1;
+	Obstacle obj2;
+	Obstacle obj3;
 
-	obj.center_x[0] =OBSTACLE_X1   ;
-	obj.center_y[0] =OBSTACLE_Y1   ;
-	obj.radius[0]   =OBSTACLE_R1   ;
-	obj.center_x[1] =OBSTACLE_X2   ;
-	obj.center_y[1] =OBSTACLE_Y2   ;
-	obj.radius[1]   =OBSTACLE_R2   ;
-	obj.center_x[2] =OBSTACLE_X3   ;
-	obj.center_y[2] =OBSTACLE_Y3   ;
-	obj.radius[2]   =OBSTACLE_R3   ;
+	obj1.center_x = obstacle_1_[0];
+	obj1.center_y = obstacle_1_[1];
+	obj1.radius	  = obstacle_1_[2];
+	obstacles.push_back(obj1);
 
-	obstacles.push_back(obj);
-	//Obstacle obstacle1;
-    //
-	//obstacle1.center_x[0] = 3.;
-	//obstacle1.center_y[0] = 2.;
-	//obstacle1.radius[0] = .5;
-	//obstacles.push_back(obstacle1);
-	//
-	//Obstacle obstacle2;
-	//
-	//obstacle2.center_x[1] = 5.;
-	//obstacle2.center_y[1] = 1.;
-	//obstacle2.radius[1] = 1.;
-	//obstacles.push_back(obstacle2);
-	//Obstacle obstacle3;
-	//
-	//obstacle3.center_x[2] = 5.;
-	//obstacle3.center_y[2] = 3.;
-	//obstacle3.radius[2] = .5;
-	//obstacles.push_back(obstacle3);
-	   
+	obj2.center_x = obstacle_2_[0];
+	obj2.center_y = obstacle_2_[1];
+	obj2.radius   = obstacle_2_[2];
+	obstacles.push_back(obj2);
+
+	obj3.center_x = obstacle_3_[0];
+	obj3.center_y = obstacle_3_[1];
+	obj3.radius   = obstacle_3_[2];
+	obstacles.push_back(obj3);
 };
 
 bool RRT::checkPointCollision(std::vector<Obstacle>& obstacles, Point& possible_point) {
-	for (int j = 0; j<3; j++) {
-		double dx2 = pow((obstacles[0].center_x[j] - possible_point.x), 2);
-		double dy2 = pow((obstacles[0].center_y[j] - possible_point.y), 2);
-		bool dist_obstacle = sqrt(dx2 + dy2) < obstacles[0].radius[j]; // Obstacle과 충돌 계산
-		//std::cout << dist_obstacle << std::endl;
-		//std::cout << "Possible point: " << possible_point.x << "\t" << possible_point.y << std::endl;
-		//std::cout << "R: " << sqrt(dx2 + dy2) << "\t" << obstacles[0].radius[j] << std::endl;
-		bool out_of_bound = abs(possible_point.x) < abs(X_MAX) && abs(possible_point.y) < abs(Y_MAX); // 경기장 bound 충돌 계산
+	int N_obj = obstacles.size();
+	for (int j = 0; j<N_obj; j++) {
+		double dx2 = pow((obstacles[j].center_x - possible_point.x), 2);
+		double dy2 = pow((obstacles[j].center_y - possible_point.y), 2);
+		bool dist_obstacle = sqrt(dx2 + dy2) < obstacles[j].radius; // Obstacle과 충돌 계산
+		bool out_of_bound = abs(possible_point.x) < abs(bound_x_max_) && abs(possible_point.y) < abs(bound_y_max_); // 경기장 bound 충돌 계산
 		if (dist_obstacle && out_of_bound) {
-			//std::cout << "YYYYYYYYYYY" << std::endl;
 			return true;
 		};
 	};
-	//std::cout << "CCCCCCCCCCCCCCCC" << std::endl;
 	return false;
 };
 
 bool RRT::checkNodeCollision(std::vector<Obstacle>& obstacles, Node& possible_node) {
-
-	for (int j = 0; j<3; j++) {
-		double dx2 = pow((obstacles[0].center_x[j] - possible_node.x), 2);
-		double dy2 = pow((obstacles[0].center_y[j] - possible_node.y), 2);
-		bool dist_obstacle = sqrt(dx2 + dy2) < obstacles[0].radius[j]; // Obstacle과 충돌 계산
-		bool out_of_bound = abs(possible_node.x) < abs(X_MAX) && abs(possible_node.y) < abs(Y_MAX); // 경기장 bound 충돌 계산
+	int N_obj = obstacles.size();
+	for (int j = 0; j<N_obj; j++) {
+		double dx2 = pow((obstacles[j].center_x - possible_node.x), 2);
+		double dy2 = pow((obstacles[j].center_y - possible_node.y), 2);
+		bool dist_obstacle = sqrt(dx2 + dy2) < obstacles[j].radius; // Obstacle과 충돌 계산
+		bool out_of_bound = abs(possible_node.x) < abs(bound_x_max_) && abs(possible_node.y) < abs(bound_y_max_); // 경기장 bound 충돌 계산
 		if (dist_obstacle && out_of_bound) {
 			return true;
 		};
@@ -211,12 +193,12 @@ void RRT::getPath(std::vector<Node> Tree, Node last_node) {
 	int count = 0;
 	for (int i = 0; i < path.size(); i++) {
 		int idx = i / 3;
-		remainder = i % 3;
+		remainder_ = i % 3;
 		//std::cout << "the remainder is" << remainder << std::endl;
 		waypoint_[i][0] = path[i].x;
 		waypoint_[i][1] = path[i].y;
 
-		if (remainder == 0)
+		if (remainder_ == 0)
 		{
 			sampled_[count][0] = path[i].x;
 			sampled_[count][1] = path[i].y;
@@ -242,8 +224,8 @@ void RRT::getPath(std::vector<Node> Tree, Node last_node) {
 };
 
 void RRT::solve() {
-    std::uniform_real_distribution<double> x_dist(X_MIN, X_MAX);
-    std::uniform_real_distribution<double> y_dist(Y_MIN, Y_MAX);
+    std::uniform_real_distribution<double> x_dist(bound_x_min_, bound_x_max_);
+    std::uniform_real_distribution<double> y_dist(bound_y_min_, bound_y_max_);
 
     std::default_random_engine re;
 
@@ -253,12 +235,12 @@ void RRT::solve() {
     generateObstacles(Obstacles);
 
     Point goal_point;
-    goal_point.x = GOAL_X;
-    goal_point.y = GOAL_Y;
+    goal_point.x = target_position_x_;
+    goal_point.y = target_position_y_;
 
     Node init_node;
-    init_node.x = START_X;
-    init_node.y = START_Y;
+    init_node.x = start_position_x_;
+    init_node.y = start_position_y_;
     init_node.id = 0;
     init_node.parent = 0;
 
@@ -266,12 +248,12 @@ void RRT::solve() {
     
     int i = 0;
 
-    while (i<MAX_ITER) {
+    while (i<rrt_max_iteration_) {
         Point rand_pt = newPoint(x_dist, y_dist, re);
 		
-        if (i % EPSILON == 0 && i != 0) {
-            rand_pt.x = GOAL_X;
-            rand_pt.y = GOAL_Y;
+        if (i % rrt_epsilon_ == 0 && i != 0) {
+            rand_pt.x = target_position_x_;
+            rand_pt.y = target_position_y_;
         }
 
         if (checkPointCollision(Obstacles, rand_pt)) {
@@ -281,7 +263,7 @@ void RRT::solve() {
         };
 
         Node closest_node = closestNode(Tree, rand_pt);
-        Node new_node = takeStep(rand_pt, closest_node, STEP_SIZE, unique_id);
+        Node new_node = takeStep(rand_pt, closest_node, rrt_step_size_, rrt_unique_id_);
 
         if (checkNodeCollision(Obstacles, new_node)) {
             i++;
@@ -290,7 +272,7 @@ void RRT::solve() {
 
         Tree.push_back(new_node);
 
-        if (foundGoal(goal_point, new_node, THRESHOLD)) {
+        if (foundGoal(goal_point, new_node, rrt_threshold_)) {
             std::cout<<"*******GOAL FOUND******"<<std::endl;
             getPath(Tree, new_node);
             break;

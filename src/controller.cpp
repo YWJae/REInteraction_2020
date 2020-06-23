@@ -8,6 +8,7 @@
 #define D2R 0.5
 
 using namespace DyrosMath;
+using namespace std;
 ofstream logfile;
 
 
@@ -22,24 +23,23 @@ double start[2]	   = { 0.08, -0.18 };  // 경기장 position 1														 //
 double target1[2]  = {-0.08,  0.18 };  // 경기장 position 2														 //
 double target2[2]  = { 0.08,  0.18 };  // 경기장 position 3														 //
 double target3[2]  = {-0.08, -0.18 };  // 경기장 position 4														 //
-																												 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*---											 FINAL PROJECT (tuning value)								  ---*/
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//double obstacle_1[3] = { 0.620 - center[0], -0.080, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
-//double obstacle_2[3] = { 0.600 - center[0],  0.120, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
-//double obstacle_3[3] = { 0.510 - center[0],  0.000, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
-double obstacle_1[3] = { 0.645 - center[0], -0.130, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
-double obstacle_2[3] = { 0.575 - center[0],  0.170, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
-double obstacle_3[3] = { 0.535 - center[0], -0.050, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_1[3] = { 0.620 - center[0], -0.080, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_2[3] = { 0.600 - center[0],  0.120, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
+double obstacle_3[3] = { 0.510 - center[0],  0.000, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
+//double obstacle_1[3] = { 0.645 - center[0], -0.130, 0.05 * D2R }; // 장애물1 (로봇 base 기준 좌표계, 지름 [m])	 //
+//double obstacle_2[3] = { 0.575 - center[0],  0.170, 0.07 * D2R }; // 장애물2 (로봇 base 기준 좌표계, 지름 [m])	 //
+//double obstacle_3[3] = { 0.535 - center[0], -0.050, 0.10 * D2R }; // 장애물3 (로봇 base 기준 좌표계, 지름 [m])	 //
 #define WAYPOINT_TOLERANCE 0.005   // if) distance < tolerence  ->  target = next waypoint						 //
 #define WAYPOINT_SETTLING_TIME 0.5 // 현재 사용 X (제어기 다른 것 사용 중)										 //
-#define PADDING_OBSTACLE 0.020	   // 장애물 지름 padding														 //
-#define WEIGHT_SPEED 0.5		   //  현재 사용 X (제어기 다른 것 사용 중)										 //
+#define PADDING_OBSTACLE 0.045	   // 장애물 지름 padding														 //
+#define WEIGHT_SPEED 1.0		   // Control gain																 //
 #define SCALE_RRT 1.0			   // RRT scaling factor														 //
 																												 //
 double rrt_threshold = 0.001;																					 //
-double rrt_step_size = 0.002;																					 //
+double rrt_step_size = 0.0015;																					 //
 int rrt_epsilon = 50;																							 //
 int rrt_max_iteration = 1000000;																				 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -241,7 +241,7 @@ void ArmController::compute()
 	if (is_mode_changed_)
 	{
 		logfile.close();
-		logfile.open(control_mode_ + ".txt");
+		logfile.open("data/" + control_mode_ + ".txt");
 		is_mode_changed_ = false;
 
 		control_start_time_ = play_time_;
@@ -294,6 +294,7 @@ void ArmController::compute()
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef FINAL_PROJECT
+	// 기능. Parameter 수정
 	else if (control_mode_ == "Change Parameters")
 	{
 		int n;
@@ -352,10 +353,47 @@ void ArmController::compute()
 		setMode("Lock Joints");
 	}
 
-	else if (control_mode_ == "center") {
-		moveJointPosition(joint_initial_position, settling_time_);
-		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("Lock Joints");
+	// 기능. 장애물 위치, 크기 입력
+	else if (control_mode_ == "ready") {
+		try {
+			double value;
+
+			cout << "Enter Obstacle(1)  Data: [X, Y, Diameter]: ";
+			cout << "=======================================" << endl;
+
+			cout << "Enter 1st Obstacle -> X [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[0] = SCALE_RRT * value - center[0];
+			cout << "Enter 1st Obstacle -> Y [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[1] = SCALE_RRT * value;
+			cout << "Enter 1st Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[2] = SCALE_RRT * D2R * value;
+
+			cout << "Enter 2nd Obstacle -> X [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[3] = SCALE_RRT * value - center[0];
+			cout << "Enter 2nd Obstacle -> Y [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[4] = SCALE_RRT * value;
+			cout << "Enter 2nd Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[5] = SCALE_RRT * D2R * value;
+
+			cout << "Enter 3rd Obstacle -> X [m](in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[6] = SCALE_RRT * value - center[0];
+			cout << "Enter 3rd Obstacle -> Y [m](in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[7] = SCALE_RRT * value;
+			cout << "Enter 3rd Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[8] = SCALE_RRT * D2R * value;
+
+			cout << "Obstacle: ";
+			for (int i = 0; i < 9; i++) {
+				cout << obstacle_[i] << "\t";
+			}
+			cout << endl;
+
+			cout << "=======================================" << endl;
+
+			setMode("Lock Joints");
+		}
+		catch (int e) {
+			cout << "Error: Wrong data type of Obstacle !!! (" << e << ")" << endl;
+			cout << "=======================================" << endl;
+
+			cin.clear();
+			cin.ignore(numeric_limits<streamsize>::max(), '\n');
+			setMode("ready");
+		}
 	}
+	
+	// 1. 초기 위치로 이동 (1번 위치)
 	else if (control_mode_ == "init") {
 		setMode("init_1");
 	}
@@ -382,50 +420,13 @@ void ArmController::compute()
 		isMotionCompleted_Task(target_p1, rotation_target, ERROR_TOLERANCE, "Lock Joint");
 	}
 
-	else if (control_mode_ == "ready") {
-		try {
-			double value;
-
-			cout << "Enter Obstacle(1)  Data: [X, Y, Diameter]: ";
-			cout << "=======================================" << endl;
-
-			cout << "Enter 1st Obstacle -> X [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[0] = SCALE_RRT * value - center[0];
-			cout << "Enter 1st Obstacle -> Y [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[1] = SCALE_RRT * value;
-			cout << "Enter 1st Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[2] = SCALE_RRT * D2R * value;
-																										
-			cout << "Enter 2nd Obstacle -> X [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[3] = SCALE_RRT * value - center[0];
-			cout << "Enter 2nd Obstacle -> Y [m] (in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[4] = SCALE_RRT * value;
-			cout << "Enter 2nd Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[5] = SCALE_RRT * D2R * value;
-																										
-			cout << "Enter 3rd Obstacle -> X [m](in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[6] = SCALE_RRT * value - center[0];
-			cout << "Enter 3rd Obstacle -> Y [m](in robot_base_frame):";			if (!(cin >> value))	throw 2;			obstacle_[7] = SCALE_RRT * value;
-			cout << "Enter 3rd Obstacle -> d [m]:";									if (!(cin >> value))	throw 2;			obstacle_[8] = SCALE_RRT * D2R * value;
-			
-			cout << "Obstacle: ";
-			for (int i = 0; i < 9; i++) {
-				cout << obstacle_[i] << "\t";
-			}
-			cout << endl;
-			
-			cout << "=======================================" << endl;
-
-			setMode("Lock Joints");
-		}
-		catch (int e) {
-			cout << "Error: Wrong data type of Obstacle !!! (" << e << ")" << endl;
-			cout << "=======================================" << endl;
-
-			cin.clear();
-			cin.ignore(numeric_limits<streamsize>::max(), '\n');
-			setMode("ready");
-		}
-	}
+	// 2. Task 시작 (Work flow: RRT(2) -> Move(2) --> RRT(3) -> Move(3) -> RRT(4) -> Move(4) -> Terminate)
 	else if (control_mode_ == "start") {
 		setMode("target1-planning");
 	}
 	else if (control_mode_ == "target1-planning") {
 		RRT_IDIM(start, target1, obstacle_);
-		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][0] << "\t" << waypoint_[i][1] << std::endl;
+		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][1] << "\t" << waypoint_[i][0] << std::endl;
 		setMode("target1-execute");
 	}
 	else if (control_mode_ == "target1-execute") {
@@ -449,7 +450,7 @@ void ArmController::compute()
 		moveTaskPositionCLIK(x_from_q_desired_, target_p2, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
 		wp_n_ = 0;
 		RRT_IDIM(target1, target2, obstacle_);
-		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][0] << "\t" << waypoint_[i][1] << std::endl;
+		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][1] << "\t" << waypoint_[i][0] << std::endl;
 		setMode("target2-execute");
 	}
 	else if (control_mode_ == "target2-execute") {
@@ -459,7 +460,7 @@ void ArmController::compute()
 
 			phi_ = -getPhi(rotation_, rotation_);
 			x_error_ << target_position - x_, phi_;
-			q_desired_ = q_ + j_inverse_from_q_desired_ * x_error_;
+			q_desired_ = q_ + WEIGHT_SPEED * j_inverse_from_q_desired_ * x_error_;
 			//moveTaskPositionCLIK(x_from_q_desired_, target_position, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
 
 			if (isMotionCompleted_Task(target_position, rotation_target, wp_tolerance_, "target2-execute")) ++wp_n_;
@@ -473,7 +474,7 @@ void ArmController::compute()
 		moveTaskPositionCLIK(x_from_q_desired_, target_p3, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
 		wp_n_ = 0;
 		RRT_IDIM(target2, target3, obstacle_);
-		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][0] << "\t" << waypoint_[i][1] << std::endl;
+		for (int i = 0; i < wp_Num_; i++) 	logfile << waypoint_[i][1] << "\t" << waypoint_[i][0] << std::endl;
 		setMode("target3-execute");
 	}
 	else if (control_mode_ == "target3-execute") {
@@ -483,7 +484,7 @@ void ArmController::compute()
 
 			phi_ = -getPhi(rotation_, rotation_);
 			x_error_ << target_position - x_, phi_;
-			q_desired_ = q_ + j_inverse_from_q_desired_ * x_error_;
+			q_desired_ = q_ + WEIGHT_SPEED * j_inverse_from_q_desired_ * x_error_;
 			//moveTaskPositionCLIK(x_from_q_desired_, target_position, rotation_from_q_desired_, rotation_target, j_inverse_from_q_desired_, wp_settling_time_);
 
 			if (isMotionCompleted_Task(target_position, rotation_target, wp_tolerance_, "target3-execute")) ++wp_n_;
@@ -494,9 +495,11 @@ void ArmController::compute()
 		isMotionCompleted_Task(target_p4, rotation_target, wp_tolerance_, "Lock Joints");
 }
 	
-
-
-
+	// 경기장 중앙, 1~4번 위치 이동
+	else if (control_mode_ == "center") {
+		moveJointPosition(joint_initial_position, settling_time_);
+		if ((joint_initial_position - q_).norm() < ERROR_TOLERANCE)	setMode("Lock Joints");
+	}
 	else if (control_mode_ == "target1") {
 		moveTaskPositionCLIK(x_from_q_desired_, target_p1,
 							 rotation_from_q_desired_, rotation_target,
@@ -1338,15 +1341,15 @@ void ArmController::printState() {
 		cout << "-------------------------------------------------------" << endl;
 		cout << "--------------    < Parameter lists >    --------------" << endl;
 		cout << "-------------------------------------------------------" << endl;
-		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "],	radius (with padding) = " << obstacle_[2] << endl;
-		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "],	radius (with padding) = " << obstacle_[5] << endl;
-		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "],	radius (with padding) = " << obstacle_[8] << endl;
+		cout << "1st Obstacle: " << "[" << obstacle_[0] << ", " << obstacle_[1] << "],	diameter (with padding) = " << obstacle_[2] * 2.0 << endl;
+		cout << "2nd Obstacle: " << "[" << obstacle_[3] << ", " << obstacle_[4] << "],	diameter (with padding) = " << obstacle_[5] * 2.0 << endl;
+		cout << "3rd Obstacle: " << "[" << obstacle_[6] << ", " << obstacle_[7] << "],	diameter (with padding) = " << obstacle_[8] * 2.0 << endl;
 		cout << "-------------------------------------------------------" << endl;
 		cout << "1. Settling time [sec] : " << std::fixed << std::setprecision(3) << wp_settling_time_ << endl;
 		cout << "2. Waypoint tolerance [m] : " << std::fixed << std::setprecision(3) << wp_tolerance_ << endl;
 		cout << "3. Speed gain (Kp) : " << std::fixed << std::setprecision(3) << weight_speed_ << endl;
-		cout << "4. Obstacle padding [m] : " << std::fixed << std::setprecision(3) << padding_obstacle_ << endl;
-		cout << "5. RRT waypoint step size [m] (~ speed) : " << std::fixed << std::setprecision(3) << rrt_step_size << endl; 
+		cout << "4. Obstacle padding (diameter) [m] : " << std::fixed << std::setprecision(3) << padding_obstacle_ << endl;
+		cout << "5. RRT waypoint step size [m] (~ speed) : " << std::fixed << std::setprecision(4) << rrt_step_size << endl; 
 		cout << "-------------------------------------------------------" << endl;
 		cout << "play_time_	: " << std::fixed << std::setprecision(3) << play_time_ << endl;
 		cout << "control_mode_	: " << std::fixed << control_mode_ << endl;
@@ -1448,9 +1451,9 @@ void ArmController::initDimension()
 	padding_obstacle_ = PADDING_OBSTACLE;
 	weight_speed_ = WEIGHT_SPEED;
 
-	obstacle_[0] = obstacle_1[0];		obstacle_[1] = obstacle_1[1];		obstacle_[2] = obstacle_1[2] + padding_obstacle_;
-	obstacle_[3] = obstacle_2[0];		obstacle_[4] = obstacle_2[1];		obstacle_[5] = obstacle_2[2] + padding_obstacle_;
-	obstacle_[6] = obstacle_3[0];		obstacle_[7] = obstacle_3[1];		obstacle_[8] = obstacle_3[2] + padding_obstacle_;
+	obstacle_[0] = obstacle_1[0];		obstacle_[1] = obstacle_1[1];		obstacle_[2] = obstacle_1[2] + padding_obstacle_ / 2.0;
+	obstacle_[3] = obstacle_2[0];		obstacle_[4] = obstacle_2[1];		obstacle_[5] = obstacle_2[2] + padding_obstacle_ / 2.0;
+	obstacle_[6] = obstacle_3[0];		obstacle_[7] = obstacle_3[1];		obstacle_[8] = obstacle_3[2] + padding_obstacle_ / 2.0;
 }
 void ArmController::initModel()
 {

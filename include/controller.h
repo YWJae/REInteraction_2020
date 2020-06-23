@@ -22,7 +22,7 @@
 #include "math_type_define.h"
 #include "RRT.h"
 
-#define WAYPOINT_NUM_MAX 1000
+#define WAYPOINT_NUM_MAX 10000
 
 #define EYE(X) Matrix<double, X, X>::Identity()
 

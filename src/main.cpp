@@ -46,37 +46,38 @@ int main(){
 
 			switch (key)
 			{
-				// Implement with user input
 			case '`':
-				ac.setMode("Change Parameters");
+				ac.setMode("Change Parameters"); // parameter 수정
 				break;
 
 #ifdef FINAL_PROJECT
-			case 'c':
-				ac.setMode("center");
-				break;
+
 			case '0':
-				ac.setMode("init");
-				break;
-			case 'r':
-				ac.setMode("ready");
+				ac.setMode("init");    // 1. Initialize (1번 위치로 이동)
 				break;
 			case 's':
-				ac.setMode("start");
+				ac.setMode("start");   // 2. Task 시작 (RRT -> Move)
 				vb.getProjectStartTime();
 				isProjectFinished = false;
 				break;
-			case '1':
-				ac.setMode("target1");
+
+			case 'r':
+				ac.setMode("ready");   // obstacle 위치, 크기 지정
 				break;
-			case '2':
-				ac.setMode("target2");
-				break;
-			case '3':
-				ac.setMode("target3");
-				break;
-			case '4':
-				ac.setMode("target4");
+			case 'c':
+				ac.setMode("center");  // 경기장 중앙으로 이동
+				break;				   
+			case '1':				   
+				ac.setMode("target1"); // 1번 위치로 이동
+				break;				   
+			case '2':				   
+				ac.setMode("target2"); // 2번 위치로 이동
+				break;				   
+			case '3':				   
+				ac.setMode("target3"); // 3번 위치로 이동
+				break;				   
+			case '4':				   
+				ac.setMode("target4"); // 4번 위치로 이동
 				break;
 #endif
 
@@ -208,8 +209,8 @@ int main(){
 				}
 			cout << "Project Duration: " << vb.project_finish_time_ - vb.project_start_time_ << "second" << endl;
 			}
-		}
 #endif
+		}
 	}
 	return 0;
 }
